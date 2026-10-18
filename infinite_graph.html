@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>无限关系图谱</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0a;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas{display:block;touch-action:none}
+canvas.cursor-grab{cursor:grab}
+canvas.cursor-grabbing{cursor:grabbing}
+canvas.cursor-pointer{cursor:pointer}
+
+.ui-panel{position:fixed;top:8px;right:8px;width:240px;max-height:88vh;overflow-y:auto;background:rgba(16,16,22,.97);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:10px;color:#c8c8c8;font-size:11px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.ui-panel.collapsed{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none}
+.ui-panel::-webkit-scrollbar{width:3px}
+.ui-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+
+.ui-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06);position:sticky;top:-10px;background:rgba(16,16,22,.97);margin:-10px -10px 10px -10px;padding:10px 10px 8px 10px;z-index:10;border-radius:12px 12px 0 0}
+.ui-title{font-size:12px;font-weight:600;color:#fff;letter-spacing:1px;text-transform:uppercase}
+.ui-toggle-btn{width:26px;height:26px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .2s;flex-shrink:0}
+.ui-toggle-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+
+.control-group{margin-bottom:8px}
+.control-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;color:#888;font-size:9px;letter-spacing:.3px}
+.control-label span:first-child{flex:1}
+.val-display{color:#6ec5ff;font-weight:500;font-family:'SF Mono','Consolas',monospace;cursor:pointer;padding:1px 5px;border-radius:3px;background:rgba(110,197,255,.06);border:1px solid rgba(110,197,255,.12);min-width:36px;text-align:center;transition:all .2s;user-select:none;font-size:9px}
+.val-display:hover{background:rgba(110,197,255,.12);border-color:rgba(110,197,255,.25)}
+.val-display.editing{background:rgba(110,197,255,.2);border-color:#6ec5ff;outline:none;color:#fff}
+
+input[type="range"]{width:100%;height:3px;-webkit-appearance:none;background:rgba(255,255,255,.06);border-radius:2px;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:#6ec5ff;border-radius:50%;cursor:pointer;box-shadow:0 0 5px rgba(110,197,255,.4);transition:transform .15s,box-shadow .15s}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);box-shadow:0 0 8px rgba(110,197,255,.6)}
+input[type="text"],input[type="number"],select{flex:1;min-width:0;max-width:calc(100% - 48px);padding:4px 6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#e2e8f0;font-size:10px;outline:none;height:26px;-webkit-appearance:none}
+input[type="text"]:focus,input[type="number"]:focus,select:focus{border-color:#6ec5ff}
+input[type="color"]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;background:transparent;padding:1px}
+
+.toggle-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.toggle-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#888;font-size:9px;cursor:pointer;transition:all .2s;letter-spacing:.3px;touch-action:manipulation}
+.toggle-btn:hover{border-color:rgba(255,255,255,.15);color:#aaa}
+.toggle-btn.active{background:rgba(110,197,255,.1);border-color:rgba(110,197,255,.3);color:#6ec5ff}
+.toggle-btn::before{content:'';width:4px;height:4px;border-radius:50%;background:#444;transition:background .2s}
+.toggle-btn.active::before{background:#6ec5ff}
+
+.fold-section{margin-bottom:6px;border:1px solid rgba(255,255,255,.05);border-radius:6px;overflow:hidden;background:rgba(255,255,255,.01)}
+.fold-header{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(255,255,255,.03);cursor:pointer;transition:background .2s;user-select:none;touch-action:manipulation}
+.fold-header:hover{background:rgba(255,255,255,.06)}
+.fold-title{font-size:9px;color:#aaa;letter-spacing:.5px;text-transform:uppercase;font-weight:600}
+.fold-arrow{font-size:8px;color:#666;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.fold-section[data-expanded="false"] .fold-arrow{transform:rotate(-90deg)}
+.fold-body{padding:6px 8px;transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .3s,padding .3s;max-height:2000px;opacity:1;overflow:hidden}
+.fold-section[data-expanded="false"] .fold-body{max-height:0;opacity:0;padding:0 8px}
+
+.ui-expand-btn{position:fixed;top:8px;right:8px;width:32px;height:32px;background:rgba(16,16,22,.97);border:1px solid rgba(255,255,255,.06);border-radius:8px;color:#888;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:101;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:opacity .3s,transform .3s;opacity:0;pointer-events:none;touch-action:manipulation}
+.ui-expand-btn.visible{opacity:1;pointer-events:auto}
+.ui-expand-btn:hover{color:#fff;border-color:rgba(255,255,255,.15)}
+
+.version-tag{position:fixed;top:8px;left:8px;color:rgba(255,255,255,.15);font-size:11px;font-family:'SF Mono',monospace;pointer-events:none;letter-spacing:1px;z-index:50}
+.hint{position:fixed;bottom:8px;left:8px;color:rgba(255,255,255,.18);font-size:8px;pointer-events:none;text-align:left;line-height:1.5;z-index:50;max-width:65vw}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#888;font-size:9px;cursor:pointer;transition:all .2s;letter-spacing:.3px;margin-right:3px;height:24px;touch-action:manipulation;-webkit-appearance:none}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn-primary{background:rgba(110,197,255,.1);border:1px solid rgba(110,197,255,.3);color:#6ec5ff}
+.btn-primary:hover:not(:disabled){background:rgba(110,197,255,.2)}
+.btn-danger{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+.btn-danger:hover:not(:disabled){background:rgba(239,68,68,.2)}
+.btn-success{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22c55e}
+.btn-success:hover:not(:disabled){background:rgba(34,197,94,.2)}
+.btn-edit{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#eab308}
+.btn-edit:hover:not(:disabled){background:rgba(234,179,8,.2)}
+.btn-lock{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:#a855f7}
+.btn-lock:hover:not(:disabled){background:rgba(168,85,247,.2)}
+
+.row{display:flex;align-items:center;gap:5px;margin-bottom:5px;overflow:hidden}
+.row label{font-size:10px;min-width:38px;color:#aaa;flex-shrink:0}
+
+.item-list{max-height:140px;overflow-y:auto;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:2px;background:rgba(0,0,0,.2);-webkit-overflow-scrolling:touch}
+.item-row{display:flex;align-items:center;gap:4px;padding:4px 5px;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px;transition:background .15s}
+.item-row:last-child{border-bottom:none}
+.item-row:hover{background:rgba(255,255,255,.03)}
+.item-row .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.item-row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8c8c8;min-width:0}
+.item-row .actions{display:flex;gap:2px;flex-shrink:0}
+.item-row .action-btn{width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:3px;cursor:pointer;font-size:10px;opacity:.7;transition:all .15s;border:none;background:transparent;color:#aaa;touch-action:manipulation}
+.item-row .action-btn:hover{opacity:1;background:rgba(255,255,255,.08)}
+.item-row .action-btn.del{color:#ef4444}
+.item-row .action-btn.edit{color:#eab308}
+.item-row .action-btn.lock{color:#a855f7}
+.item-row .lock-indicator{font-size:8px;color:#a855f7;margin-left:auto;margin-right:3px}
+
+.empty-state{text-align:center;padding:10px;color:#555;font-size:10px}
+
+.float-menu{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.95);background:rgba(22,22,28,.98);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;width:260px;max-width:calc(100vw - 24px);max-height:75vh;overflow-y:auto;z-index:600;box-shadow:0 12px 40px rgba(0,0,0,.7);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:none;opacity:0;transition:opacity .2s,transform .2s}
+.float-menu.show{display:block;opacity:1;transform:translate(-50%,-50%) scale(1)}
+.float-menu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.float-menu-title{font-size:13px;font-weight:600;color:#fff}
+.float-menu-close{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;color:#888;background:transparent;border:none;font-size:14px;touch-action:manipulation}
+.float-menu-close:hover{color:#fff;background:rgba(255,255,255,.06)}
+.float-menu .row{margin-bottom:8px}
+.float-menu .row:last-child{margin-bottom:0}
+.float-menu .row label{min-width:36px;font-size:10px}
+.float-menu input[type="text"],.float-menu input[type="number"],.float-menu select{max-width:calc(100% - 44px);height:26px;padding:4px 6px;font-size:11px}
+.float-menu .btn{margin-right:0;margin-top:8px;width:100%;justify-content:center;height:28px}
+.float-menu-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);display:none;backdrop-filter:blur(2px)}
+.float-menu-overlay.show{display:block}
+
+#tooltip{position:fixed;background:rgba(18,18,22,.96);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:240px;color:#c8c8c8;word-break:break-word}
+#tooltip.show{opacity:1}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-60px);background:rgba(18,18,22,.96);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 18px;font-size:12px;z-index:300;transition:transform .35s cubic-bezier(.4,0,.2,1);pointer-events:none;color:#c8c8c8;white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:#22c55e;color:#22c55e}
+#toast.err{border-color:#ef4444;color:#ef4444}
+#file-input{display:none}
+
+.history-status{font-size:9px;color:#555;margin-top:3px;text-align:center}
+.perf-float-panel{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(16,16,22,.95);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:0;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:'SF Mono','Consolas',monospace;font-size:10px;color:#888;min-width:140px;user-select:none;touch-action:none;transition:opacity .3s}
+.perf-float-panel.hidden{opacity:0;pointer-events:none}
+.perf-header{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.06);color:#aaa;font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:600;cursor:grab;display:flex;align-items:center;justify-content:space-between}
+.perf-header:active{cursor:grabbing}
+.perf-body{padding:6px 10px}
+.perf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.perf-row:last-child{margin-bottom:0}
+.perf-row span:first-child{color:#666}
+.perf-row span:last-child{color:#6ec5ff;font-weight:500;min-width:36px;text-align:right}
+
+@media(max-width:600px){
+.ui-panel{width:220px;padding:8px;top:6px;right:6px}
+.ui-header{margin:-8px -8px 10px -8px;padding:8px 8px 8px 8px}
+.hint{font-size:7px;bottom:4px;left:4px;max-width:75vw}
+.float-menu{width:calc(100vw - 24px)}
+.perf-float-panel{font-size:9px;min-width:120px}
+.perf-header{padding:5px 8px}
+.perf-body{padding:5px 8px}
+}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="version-tag">无限关系图谱</div>
+<div class="perf-float-panel" id="perfPanel">
+<div class="perf-header" id="perfHeader">性能监控 <span style="color:#444;font-size:8px;cursor:pointer" onclick="togglePerfPanel()">✕</span></div>
+<div class="perf-body">
+<div class="perf-row"><span>FPS</span><span id="perf-fps">--</span></div>
+<div class="perf-row"><span>帧耗时</span><span id="perf-frameTime">--</span></div>
+<div class="perf-row"><span>节点数</span><span id="perf-nodes">0</span></div>
+<div class="perf-row"><span>边数</span><span id="perf-edges">0</span></div>
+<div class="perf-row"><span>简化渲染</span><span id="perf-simplified">关</span></div>
+</div>
+</div>
+<div class="hint">
+单指拖拽: 移动节点 / 双指: 缩放+平移<br>
+中键/空格+拖拽: 平移画布 | 双击空白: 添加节点<br>
+Ctrl+Z 撤销 | Ctrl+Y 重做 | 长按节点: 菜单
+</div>
+<div id="tooltip"></div>
+<div id="toast"></div>
+<div class="float-menu-overlay" id="floatMenuOverlay"></div>
+
+<div class="float-menu" id="nodeFloatMenu">
+  <div class="float-menu-header">
+    <div class="float-menu-title">调整节点</div>
+    <button class="float-menu-close" onclick="closeNodeFloatMenu()">✕</button>
+  </div>
+  <div class="row"><label>名称</label><input type="text" id="float-node-name" enterkeyhint="done"></div>
+  <div class="row"><label>颜色</label><input type="color" id="float-node-color"></div>
+  <div class="row"><label>文字</label><input type="color" id="float-node-text-color"></div>
+  <div class="row"><label>大小</label><input type="number" id="float-node-size" min="10" max="80" enterkeyhint="done"></div>
+  <div class="row"><label>字号</label><input type="number" id="float-node-fontsize" min="6" max="1000" placeholder="自动" enterkeyhint="done"></div>
+  <div class="row">
+    <button class="btn btn-lock" style="width:100%;margin-top:4px" onclick="toggleNodeLockFromFloatMenu()" id="float-node-lock-btn">锁定节点</button>
+  </div>
+  <button class="btn btn-primary" onclick="saveNodeFloatMenu()">保存修改</button>
+</div>
+
+<div class="float-menu" id="edgeFloatMenu">
+  <div class="float-menu-header">
+    <div class="float-menu-title">调整关系</div>
+    <button class="float-menu-close" onclick="closeEdgeFloatMenu()">✕</button>
+  </div>
+  <div class="row"><label>起点</label><select id="float-edge-source"></select></div>
+  <div class="row"><label>终点</label><select id="float-edge-target"></select></div>
+  <div class="row"><label>关系</label><input type="text" id="float-edge-label" placeholder="留空则不显示" enterkeyhint="done"></div>
+  <div class="row"><label>线条</label><input type="color" id="float-edge-color"></div>
+  <div class="row"><label>文字</label><input type="color" id="float-edge-text-color"></div>
+  <div class="row"><label>粗细</label><input type="number" id="float-edge-thickness" min="1" max="10" enterkeyhint="done"></div>
+  <div class="row"><label>距离</label><input type="number" id="float-edge-distance" min="30" max="500" enterkeyhint="done"></div>
+  <button class="btn btn-primary" onclick="saveEdgeFloatMenu()">保存修改</button>
+</div>
+
+<div class="float-menu" id="hdExportMenu">
+  <div class="float-menu-header">
+    <div class="float-menu-title">高清导出设置</div>
+    <button class="float-menu-close" onclick="closeHdExportMenu()">✕</button>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <label style="min-width:36px;font-size:10px;color:#aaa">倍数</label>
+    <select id="hd-export-scale" style="flex:1;min-width:0;max-width:calc(100% - 48px);padding:4px 6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#e2e8f0;font-size:10px;outline:none;height:26px;-webkit-appearance:none">
+      <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option><option value="13">13x</option><option value="14">14x</option><option value="15">15x</option><option value="16">16x</option><option value="17">17x</option><option value="18">18x</option><option value="19">19x</option><option value="20">20x</option><option value="21">21x</option><option value="22">22x</option><option value="23">23x</option><option value="24">24x</option><option value="25">25x</option><option value="26">26x</option><option value="27">27x</option><option value="28">28x</option><option value="29">29x</option><option value="30">30x</option><option value="31">31x</option><option value="32">32x</option>
+    </select>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <label style="min-width:36px;font-size:10px;color:#aaa">范围</label>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="btn hd-mode-btn active" data-mode="viewport" onclick="setHdMode('viewport')">当前视图</button>
+      <button class="btn hd-mode-btn" data-mode="fullgraph" onclick="setHdMode('fullgraph')">完整图谱</button>
+    </div>
+  </div>
+  <div style="font-size:9px;color:#666;margin-bottom:8px;line-height:1.4">
+    当前视图 = 导出屏幕可见区域<br>
+    完整图谱 = 自动计算所有节点包围盒并居中导出
+  </div>
+  <button class="btn btn-primary" onclick="confirmHdExport()" style="width:100%;margin-top:4px">开始导出</button>
+</div>
+
+<div class="ui-panel" id="uiPanel">
+<div class="ui-header">
+<div class="ui-title">图谱配置</div>
+<div class="ui-toggle-btn" id="collapseBtn">✕</div>
+</div>
+
+<div class="fold-section" id="fold-nodes" data-expanded="true">
+<div class="fold-header" data-fold="fold-nodes"><span class="fold-title">节点</span><span class="fold-arrow">▼</span></div>
+<div class="fold-body">
+<div class="row"><label>名称</label><input type="text" id="node-name" placeholder="" enterkeyhint="done"></div>
+<div class="row"><label>颜色</label><input type="color" id="node-color" value="#3b82f6"></div>
+<div class="row"><label>文字</label><input type="color" id="node-text-color" value="#e2e8f0"></div>
+<div class="row"><label>大小</label><input type="number" id="node-size" value="20" enterkeyhint="done" min="10" max="80"></div>
+<div class="row"><button class="btn btn-primary" onclick="addNode()">添加节点</button></div>
+<h3 style="margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:6px;font-size:10px;color:#888;margin-bottom:4px">节点列表 <span id="node-count" style="color:#555">(0)</span></h3>
+<div class="item-list" id="node-list"><div class="empty-state">暂无节点</div></div>
+</div>
+</div>
+
+<div class="fold-section" id="fold-edges" data-expanded="false">
+<div class="fold-header" data-fold="fold-edges"><span class="fold-title">关系</span><span class="fold-arrow">▼</span></div>
+<div class="fold-body">
+<div class="row"><label>起点</label><select id="edge-source"><option value="">选择节点</option></select></div>
+<div class="row"><label>终点</label><select id="edge-target"><option value="">选择节点</option></select></div>
+<div class="row"><label>关系</label><input type="text" id="edge-label" placeholder="留空则不显示" enterkeyhint="done"></div>
+<div class="row"><label>线条</label><input type="color" id="edge-color" value="#64748b"></div>
+<div class="row"><label>文字</label><input type="color" id="edge-text-color" value="#c8c8c8"></div>
+<div class="row"><label>粗细</label><input type="number" id="edge-thickness" value="2" min="1" max="10" enterkeyhint="done"></div>
+<div class="row"><label>距离</label><input type="number" id="edge-distance" value="120" enterkeyhint="done" min="30" max="500"></div>
+<div class="row"><button class="btn btn-primary" onclick="addEdge()">添加关系</button></div>
+<h3 style="margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:6px;font-size:10px;color:#888;margin-bottom:4px">关系列表 <span id="edge-count" style="color:#555">(0)</span></h3>
+<div class="item-list" id="edge-list"><div class="empty-state">暂无关系</div></div>
+</div>
+</div>
+
+<div class="fold-section" id="fold-physics" data-expanded="false">
+<div class="fold-header" data-fold="fold-physics"><span class="fold-title">物理</span><span class="fold-arrow">▼</span></div>
+<div class="fold-body">
+<div class="control-group">
+<div class="control-label"><span>斥力</span><span class="val-display" id="val-repulsion">1500</span></div>
+<input type="range" id="inp-repulsion" min="100" max="8000" value="1500">
+</div>
+<div class="control-group">
+<div class="control-label"><span>引力</span><span class="val-display" id="val-attraction">0.05</span></div>
+<input type="range" id="inp-attraction" min="0.01" max="0.5" step="0.01" value="0.05">
+</div>
+<div class="control-group">
+<div class="control-label"><span>阻尼</span><span class="val-display" id="val-damping">0.85</span></div>
+<input type="range" id="inp-damping" min="0.1" max="0.95" step="0.05" value="0.85">
+</div>
+<div class="control-group">
+<div class="control-label"><span>中心力</span><span class="val-display" id="val-centerForce">0.01</span></div>
+<input type="range" id="inp-centerForce" min="0" max="0.1" step="0.001" value="0.01">
+</div>
+<div class="control-group">
+<div class="control-label"><span>碰撞反弹</span><span class="val-display" id="val-collision">0.5</span></div>
+<input type="range" id="inp-collision" min="0" max="2" step="0.1" value="0.5">
+</div>
+<div class="toggle-row">
+<button class="btn btn-success" onclick="resetPhysics()">重置</button>
+<button class="btn btn-primary" onclick="togglePhysics()" id="physics-btn">暂停物理</button>
+</div>
+<div class="toggle-row">
+<button class="btn btn-primary" onclick="centerGraph()">居中</button>
+<button class="btn btn-primary" onclick="fitViewToGraph()">适配视图</button>
+<button class="btn btn-danger" onclick="randomizeLayout()">随机</button>
+</div>
+</div>
+</div>
+
+<div class="fold-section" id="fold-data" data-expanded="false">
+<div class="fold-header" data-fold="fold-data"><span class="fold-title">数据</span><span class="fold-arrow">▼</span></div>
+<div class="fold-body">
+<div class="toggle-row">
+<button class="btn" onclick="undo()" id="undo-btn" disabled>撤销</button>
+<button class="btn" onclick="redo()" id="redo-btn" disabled>重做</button>
+</div>
+<div class="history-status" id="history-status"></div>
+<div class="toggle-row" style="justify-content:space-between;align-items:center;margin-top:8px">
+<span style="font-size:9px;color:#888">自动保存 <span id="auto-save-status" style="color:#555;margin-left:4px"></span></span>
+<button class="toggle-btn active" id="autoSaveToggle" onclick="toggleAutoSave()">开</button>
+</div>
+<div class="row" style="margin-top:8px">
+<input type="file" id="file-input" accept=".json" onchange="handleFile(this)">
+<button class="btn btn-success" onclick="pickFile()">导入 JSON</button>
+<button class="btn btn-primary" onclick="exportJSON()">导出 JSON</button>
+<button class="btn btn-success" onclick="manualSave()" id="manual-save-btn">保存</button>
+</div>
+<div class="row">
+<button class="btn btn-primary" onclick="openHdExportMenu()">高清渲染</button>
+<button class="btn btn-danger" onclick="clearAll()">清空</button>
+</div>
+</div>
+</div>
+
+<div class="fold-section" id="fold-view" data-expanded="false">
+<div class="fold-header" data-fold="fold-view"><span class="fold-title">视图</span><span class="fold-arrow">▼</span></div>
+<div class="fold-body">
+<div class="toggle-row">
+<div class="toggle-btn active" id="showGrid">网格</div>
+<div class="toggle-btn active" id="showAxes">坐标轴</div>
+<div class="toggle-btn active" id="showLabels">标签</div>
+<div class="toggle-btn active" id="showPerformance">性能</div>
+</div>
+<div class="control-group">
+<div class="control-label"><span>网格透明度</span><span class="val-display" id="val-gridOpacity" data-param="gridOpacity">20</span></div>
+<input type="range" id="inp-gridOpacity" min="0" max="100" value="20" step="1">
+</div>
+<div class="control-group">
+<div class="control-label"><span>渲染上限(节点)</span><span class="val-display" id="val-renderLimit">2000</span></div>
+<input type="range" id="inp-renderLimit" min="100" max="5000" value="2000" step="100">
+</div>
+</div>
+</div>
+</div>
+<div class="ui-expand-btn" id="expandBtn">≡</div>
+
+<script>
+// ========== DATA & STATE ==========
+let nodes = [], edges = [], nextNodeId = 1;
+let physicsRunning = false;
+let draggingNode = null, dragOffset = { x: 0, y: 0 };
+let hoveredNode = null, hoveredEdge = null;
+let selectedNode = null;
+let editingNodeId = null, editingEdgeId = null;
+
+let historyStack = [], historyIndex = -1, maxHistorySize = 50, isUndoRedoOperation = false;
+let autoSaveTimer = null, autoSaveEnabled = true;
+
+const canvas = document.getElementById('canvas');
+const context = canvas.getContext('2d', { alpha: false });
+let canvasWidth = 0, canvasHeight = 0;
+let viewState = { x: 0, y: 0, zoom: 1, minZoom: 0.005, maxZoom: 300 };
+let preferences = { showGrid: 1, showAxes: 1, showLabels: 1, showPerformance: 1, gridOpacity: 0.2, renderLimit: 2000 };
+
+let isPanning = false, isSpacePressed = false, panStart = { x: 0, y: 0 }, viewStart = { x: 0, y: 0 };
+let isPinchGesture = false, touchStartDistance = 0, touchStartZoom = 1, pinchCenter = { x: 0, y: 0 }, pinchViewStart = { x: 0, y: 0 };
+let isTouchDragging = false, touchDragStartWorld = { x: 0, y: 0 };
+let longPressTimer = null, longPressNode = null, isLongPressTriggered = false;
+
+let physicsParams = { repulsion: 1500, attraction: 0.05, damping: 0.85, centerForce: 0.01, collisionBounce: 0.5 };
+
+let lastFrameTime = 0, frameCount = 0, lastFpsTime = 0, currentFps = 0;
+let perfStats = { lastFrameTime: 0, frameTime: 0, simplifiedRender: false };
+let viewAnimation = null;
+
+// ========== PERFORMANCE OPTIMIZATION: NODE INDEX ==========
+const nodeIndexMap = new Map();
+let edgesNeedCacheRebuild = true;
+let uiUpdateScheduled = false;
+let physicsFrameCounter = 0;
+const PHYSICS_SKIP_FRAMES = 2; // Run physics every N render frames
+
+function rebuildNodeIndex() {
+  nodeIndexMap.clear();
+  for (let i = 0, len = nodes.length; i < len; i++) {
+    nodeIndexMap.set(nodes[i].id, nodes[i]);
+  }
+}
+
+function getNodeById(nodeId) {
+  return nodeIndexMap.get(nodeId);
+}
+
+function rebuildEdgeCache() {
+  if (!edgesNeedCacheRebuild) return;
+  edgesNeedCacheRebuild = false;
+  for (let i = 0, len = edges.length; i < len; i++) {
+    const edge = edges[i];
+    edge._sourceNode = nodeIndexMap.get(edge.source);
+    edge._targetNode = nodeIndexMap.get(edge.target);
+  }
+}
+
+function invalidateEdgeCache() {
+  edgesNeedCacheRebuild = true;
+}
+
+function scheduleUpdateUserInterface() {
+  if (uiUpdateScheduled) return;
+  uiUpdateScheduled = true;
+  requestAnimationFrame(() => {
+    uiUpdateScheduled = false;
+    updateUserInterfaceImpl();
+  });
+}
+
+// ========== SPATIAL HASH (Optimized) ==========
+class SpatialHashGrid {
+  constructor(cellSize) {
+    this.cellSize = cellSize || 80;
+    this.cells = new Map();
+    this.clear();
+  }
+  clear() { this.cells.clear(); }
+  getKey(x, y) {
+    return (Math.floor(x / this.cellSize) + ',' + Math.floor(y / this.cellSize));
+  }
+  insert(node) {
+    const key = this.getKey(node.x, node.y);
+    let cell = this.cells.get(key);
+    if (!cell) { cell = []; this.cells.set(key, cell); }
+    cell.push(node);
+  }
+  rebuild(nodeArray) {
+    this.clear();
+    for (let i = 0, len = nodeArray.length; i < len; i++) this.insert(nodeArray[i]);
+  }
+  queryRadius(centerX, centerY, radius) {
+    const results = [];
+    const cellSize = this.cellSize;
+    const minCellX = Math.floor((centerX - radius) / cellSize);
+    const maxCellX = Math.floor((centerX + radius) / cellSize);
+    const minCellY = Math.floor((centerY - radius) / cellSize);
+    const maxCellY = Math.floor((centerY + radius) / cellSize);
+    for (let cx = minCellX; cx <= maxCellX; cx++) {
+      for (let cy = minCellY; cy <= maxCellY; cy++) {
+        const cell = this.cells.get(cx + ',' + cy);
+        if (!cell) continue;
+        for (let i = 0, len = cell.length; i < len; i++) {
+          const node = cell[i];
+          const dx = node.x - centerX, dy = node.y - centerY;
+          if (dx * dx + dy * dy <= radius * radius) results.push(node);
+        }
+      }
+    }
+    return results;
+  }
+  queryNeighbors(node, radius) {
+    const results = [];
+    const cellSize = this.cellSize;
+    const minCellX = Math.floor((node.x - radius) / cellSize);
+    const maxCellX = Math.floor((node.x + radius) / cellSize);
+    const minCellY = Math.floor((node.y - radius) / cellSize);
+    const maxCellY = Math.floor((node.y + radius) / cellSize);
+    for (let cx = minCellX; cx <= maxCellX; cx++) {
+      for (let cy = minCellY; cy <= maxCellY; cy++) {
+        const cell = this.cells.get(cx + ',' + cy);
+        if (!cell) continue;
+        for (let i = 0, len = cell.length; i < len; i++) {
+          const other = cell[i];
+          if (other === node) continue;
+          const dx = other.x - node.x, dy = other.y - node.y;
+          if (dx * dx + dy * dy <= radius * radius) results.push(other);
+        }
+      }
+    }
+    return results;
+  }
+}
+
+const spatialHash = new SpatialHashGrid(80);
+
+// ========== UTILITIES ==========
+function convertScreenToWorld(screenX, screenY) {
+  const centerX = window.innerWidth / 2, centerY = window.innerHeight / 2;
+  return { x: (screenX - centerX) / viewState.zoom + viewState.x, y: (screenY - centerY) / viewState.zoom + viewState.y };
+}
+
+function convertWorldToScreen(worldX, worldY) {
+  const centerX = window.innerWidth / 2, centerY = window.innerHeight / 2;
+  return { x: (worldX - viewState.x) * viewState.zoom + centerX, y: (worldY - viewState.y) * viewState.zoom + centerY };
+}
+
+function escapeHtmlString(string) {
+  return string.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+
+function generateUniqueId() {
+  return Date.now() + '_' + Math.floor(Math.random() * 1000000);
+}
+
+function computeBoundingBox(nodeArray) {
+  if (!nodeArray || nodeArray.length === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0, len = nodeArray.length; i < len; i++) {
+    const node = nodeArray[i];
+    const nr = node.r;
+    const nx = node.x, ny = node.y;
+    if (nx - nr < minX) minX = nx - nr;
+    if (ny - nr < minY) minY = ny - nr;
+    if (nx + nr > maxX) maxX = nx + nr;
+    if (ny + nr > maxY) maxY = ny + nr;
+  }
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+// ========== CANVAS RESIZE ==========
+function resizeCanvasElement() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvasWidth = canvas.width = window.innerWidth * dpr;
+  canvasHeight = canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvasElement);
+resizeCanvasElement();
+
+// ========== HIT TESTING (Optimized with nodeIndexMap) ==========
+function hitTestNode(worldX, worldY) {
+  const queryRadius = 50 / viewState.zoom + 20;
+  const candidates = spatialHash.queryRadius(worldX, worldY, queryRadius);
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const node = candidates[i];
+    const dx = worldX - node.x, dy = worldY - node.y;
+    if (dx * dx + dy * dy <= node.r * node.r) return node;
+  }
+  return null;
+}
+
+function hitTestEdge(worldX, worldY) {
+  const worldThreshold = 10 / viewState.zoom;
+  for (let i = edges.length - 1; i >= 0; i--) {
+    const edge = edges[i];
+    const sourceNode = edge._sourceNode || nodeIndexMap.get(edge.source);
+    const targetNode = edge._targetNode || nodeIndexMap.get(edge.target);
+    if (!sourceNode || !targetNode) continue;
+    const dx = targetNode.x - sourceNode.x, dy = targetNode.y - sourceNode.y;
+    const length = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = dx / length, ny = dy / length;
+    const startX = sourceNode.x + nx * sourceNode.r;
+    const startY = sourceNode.y + ny * sourceNode.r;
+    const endX = targetNode.x - nx * targetNode.r;
+    const endY = targetNode.y - ny * targetNode.r;
+    const px = worldX - startX, py = worldY - startY;
+    const dotProduct = px * nx + py * ny;
+    if (dotProduct < 0 || dotProduct > length) continue;
+    const projX = startX + nx * dotProduct, projY = startY + ny * dotProduct;
+    const distLine = (worldX - projX) * (worldX - projX) + (worldY - projY) * (worldY - projY);
+    const threshold = worldThreshold + (edge.thickness || 2) / viewState.zoom;
+    if (distLine < threshold * threshold) return edge;
+  }
+  return null;
+}
+
+// ========== PHYSICS ENGINE (Optimized) ==========
+function simulatePhysicsEngine() {
+  if (!physicsRunning || nodes.length === 0) return;
+  physicsFrameCounter++;
+  if (physicsFrameCounter % PHYSICS_SKIP_FRAMES !== 0) return;
+
+  const repulsion = physicsParams.repulsion;
+  const attraction = physicsParams.attraction;
+  const damping = physicsParams.damping;
+  const centerForce = physicsParams.centerForce;
+  const collisionBounce = physicsParams.collisionBounce;
+  const nodeCount = nodes.length;
+
+  spatialHash.rebuild(nodes);
+
+  const interactionRadius = Math.sqrt(repulsion * 4) + 100;
+  for (let i = 0; i < nodeCount; i++) {
+    const node1 = nodes[i];
+    if (node1.isLocked) continue;
+    const neighbors = spatialHash.queryNeighbors(node1, interactionRadius);
+    for (let j = 0, nlen = neighbors.length; j < nlen; j++) {
+      const node2 = neighbors[j];
+      if (node2.isLocked && node1.isLocked) continue;
+      const dx = node1.x - node2.x, dy = node1.y - node2.y;
+      const distanceSq = dx * dx + dy * dy;
+      const distance = Math.sqrt(distanceSq) || 0.1;
+      const force = repulsion / (distanceSq + 1);
+      const forceX = (dx / distance) * force;
+      const forceY = (dy / distance) * force;
+      if (!node1.isLocked) { node1.vx += forceX / node1.mass; node1.vy += forceY / node1.mass; }
+      if (!node2.isLocked) { node2.vx -= forceX / node2.mass; node2.vy -= forceY / node2.mass; }
+    }
+  }
+
+  const edgeCount = edges.length;
+  for (let i = 0; i < edgeCount; i++) {
+    const edge = edges[i];
+    const sourceNode = edge._sourceNode || nodeIndexMap.get(edge.source);
+    const targetNode = edge._targetNode || nodeIndexMap.get(edge.target);
+    if (!sourceNode || !targetNode) continue;
+    const dx = targetNode.x - sourceNode.x, dy = targetNode.y - sourceNode.y;
+    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+    const force = (distance - edge.distance) * attraction;
+    const forceX = (dx / distance) * force;
+    const forceY = (dy / distance) * force;
+    if (!sourceNode.isLocked) { sourceNode.vx += forceX / sourceNode.mass; sourceNode.vy += forceY / sourceNode.mass; }
+    if (!targetNode.isLocked) { targetNode.vx -= forceX / targetNode.mass; targetNode.vy -= forceY / targetNode.mass; }
+  }
+
+  for (let i = 0; i < nodeCount; i++) {
+    const node = nodes[i];
+    if (node.isLocked) { node.vx = 0; node.vy = 0; continue; }
+    node.vx += (0 - node.x) * centerForce;
+    node.vy += (0 - node.y) * centerForce;
+    node.vx *= damping;
+    node.vy *= damping;
+    if (node !== draggingNode) {
+      node.x += node.vx;
+      node.y += node.vy;
+    }
+  }
+
+  if (collisionBounce > 0) {
+    for (let i = 0; i < nodeCount; i++) {
+      const node1 = nodes[i];
+      const collisionRadius = node1.r * 2.5;
+      const colliders = spatialHash.queryNeighbors(node1, collisionRadius);
+      for (let j = 0, clen = colliders.length; j < clen; j++) {
+        const node2 = colliders[j];
+        if (node1 === node2) continue;
+        const dx = node2.x - node1.x, dy = node2.y - node1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 0.1;
+        const minDistance = node1.r + node2.r;
+        if (distance < minDistance) {
+          const overlap = minDistance - distance;
+          const nx = dx / distance, ny = dy / distance;
+          const separationX = nx * overlap * 0.5 * collisionBounce;
+          const separationY = ny * overlap * 0.5 * collisionBounce;
+          if (!node1.isLocked) { node1.x -= separationX; node1.y -= separationY; }
+          if (!node2.isLocked) { node2.x += separationX; node2.y += separationY; }
+          const bounceForce = 0.3 * collisionBounce;
+          if (!node1.isLocked) { node1.vx -= nx * bounceForce; node1.vy -= ny * bounceForce; }
+          if (!node2.isLocked) { node2.vx += nx * bounceForce; node2.vy += ny * bounceForce; }
+        }
+      }
+    }
+  }
+}
+
+// ========== VIEW AUTO-FIT & ANIMATION ==========
+function animateViewToTarget(targetX, targetY, targetZoom, duration) {
+  if (viewAnimation) cancelAnimationFrame(viewAnimation.rafId);
+  const startX = viewState.x, startY = viewState.y, startZoom = viewState.zoom;
+  const startTime = performance.now();
+  duration = duration || 600;
+
+  function step(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    viewState.x = startX + (targetX - startX) * ease;
+    viewState.y = startY + (targetY - startY) * ease;
+    viewState.zoom = startZoom + (targetZoom - startZoom) * ease;
+    if (progress < 1) {
+      viewAnimation = { rafId: requestAnimationFrame(step) };
+    } else {
+      viewAnimation = null;
+    }
+  }
+  viewAnimation = { rafId: requestAnimationFrame(step) };
+}
+
+function fitViewToGraph() {
+  if (nodes.length === 0) { centerGraph(); return; }
+  const bbox = computeBoundingBox(nodes);
+  const padding = 80;
+  const availableWidth = window.innerWidth - padding * 2;
+  const availableHeight = window.innerHeight - padding * 2;
+  const scaleX = availableWidth / (bbox.width || 1);
+  const scaleY = availableHeight / (bbox.height || 1);
+  const targetZoom = Math.min(scaleX, scaleY, 1.5);
+  const targetX = (bbox.minX + bbox.maxX) / 2;
+  const targetY = (bbox.minY + bbox.maxY) / 2;
+  animateViewToTarget(targetX, targetY, Math.max(targetZoom, 0.05), 700);
+  showToastMessage('视图已适配', true);
+  saveHistoryState('适配视图');
+}
+
+function centerGraph() {
+  animateViewToTarget(0, 0, 1, 500);
+}
+// ========== RENDERING (FPS Optimized) ==========
+function drawArrowHead(startX, startY, endX, endY, color, targetRadius, thickness, invZoom) {
+  const dx = endX - startX, dy = endY - startY;
+  const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = dx / distance, ny = dy / distance;
+  const arrowEndX = endX - nx * targetRadius;
+  const arrowEndY = endY - ny * targetRadius;
+  const screenArrowLength = Math.min(distance * viewState.zoom * 0.35, 8 + (thickness || 2) * 2);
+  const screenArrowWidth = 4 + (thickness || 2);
+  const arrowLength = screenArrowLength * invZoom;
+  const arrowWidth = screenArrowWidth * invZoom;
+  const ax1 = arrowEndX - arrowLength * nx + arrowWidth * ny;
+  const ay1 = arrowEndY - arrowLength * ny - arrowWidth * nx;
+  const ax2 = arrowEndX - arrowLength * nx - arrowWidth * ny;
+  const ay2 = arrowEndY - arrowLength * ny + arrowWidth * nx;
+  context.fillStyle = color;
+  context.beginPath();
+  context.moveTo(arrowEndX, arrowEndY); context.lineTo(ax1, ay1); context.lineTo(ax2, ay2);
+  context.closePath(); context.fill();
+}
+
+function drawEdgeLabelText(startX, startY, endX, endY, label, color) {
+  if (!preferences.showLabels) return;
+  if (!label || label.trim() === '') return;
+  const midX = (startX + endX) * 0.5, midY = (startY + endY) * 0.5;
+  context.font = '11px "Segoe UI",sans-serif';
+  const textWidth = context.measureText(label).width;
+  context.fillStyle = 'rgba(10,10,10,0.85)';
+  context.fillRect(midX - textWidth * 0.5 - 4, midY - 7, textWidth + 8, 14);
+  context.fillStyle = color;
+  context.textAlign = 'center'; context.textBaseline = 'middle';
+  context.fillText(label, midX, midY);
+}
+
+function drawSingleNode(node, invZoom) {
+  const isHover = node === hoveredNode;
+  const isSelected = node === selectedNode;
+  const nx = node.x, ny = node.y, nr = node.r;
+
+  if (isHover || isSelected) {
+    const glowRadius = isHover ? nr * 1.5 : nr * 1.3;
+    const glowAlpha = isHover ? '20' : '12';
+    const gradient = context.createRadialGradient(nx, ny, nr, nx, ny, glowRadius);
+    gradient.addColorStop(0, node.color + glowAlpha);
+    gradient.addColorStop(1, node.color + '00');
+    context.fillStyle = gradient;
+    context.beginPath(); context.arc(nx, ny, glowRadius, 0, Math.PI * 2); context.fill();
+  }
+
+  context.fillStyle = node.color;
+  context.beginPath(); context.arc(nx, ny, nr, 0, Math.PI * 2); context.fill();
+
+  if (isSelected) {
+    context.strokeStyle = '#fff'; context.lineWidth = 2 * invZoom;
+    context.beginPath(); context.arc(nx, ny, nr + 2 * invZoom, 0, Math.PI * 2); context.stroke();
+  }
+
+  if (preferences.showLabels) {
+    const fontSize = node.fontSize || Math.max(9, Math.min(16, nr * 0.7));
+    context.font = '500 ' + fontSize + 'px "Segoe UI",sans-serif';
+    context.fillStyle = node.textColor || '#e2e8f0';
+    context.textAlign = 'center'; context.textBaseline = 'middle';
+    context.shadowColor = 'rgba(0,0,0,0.8)'; context.shadowBlur = 4;
+    context.fillText(node.name, nx, ny);
+    context.shadowBlur = 0;
+  }
+}
+
+function drawGridLines(invZoom) {
+  if (!preferences.showGrid) return;
+  const levelValues = [2.5, 5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240];
+  let primaryLevel = levelValues[4];
+  for (let i = 0; i < levelValues.length; i++) {
+    const screenSpace = levelValues[i] * viewState.zoom;
+    if (screenSpace >= 30 && screenSpace <= 80) { primaryLevel = levelValues[i]; break; }
+    if (screenSpace > 80 && i > 0) {
+      const prevScreen = levelValues[i - 1] * viewState.zoom;
+      primaryLevel = prevScreen >= 30 ? levelValues[i - 1] : levelValues[i]; break;
+    }
+    if (i === levelValues.length - 1) primaryLevel = levelValues[i];
+  }
+  const secondaryLevel = primaryLevel * 4;
+  const topLeft = convertScreenToWorld(0, 0);
+  const bottomRight = convertScreenToWorld(window.innerWidth, window.innerHeight);
+  const startX = Math.floor(topLeft.x / secondaryLevel) * secondaryLevel;
+  const startY = Math.floor(topLeft.y / secondaryLevel) * secondaryLevel;
+  const endX = Math.ceil(bottomRight.x / secondaryLevel) * secondaryLevel;
+  const endY = Math.ceil(bottomRight.y / secondaryLevel) * secondaryLevel;
+  const gridOpacity = preferences.gridOpacity;
+  context.strokeStyle = 'rgba(255,255,255,' + (0.015 * gridOpacity / 0.2) + ')';
+  context.lineWidth = invZoom;
+  for (let x = startX; x <= endX; x += secondaryLevel) { context.beginPath(); context.moveTo(x, startY); context.lineTo(x, endY); context.stroke(); }
+  for (let y = startY; y <= endY; y += secondaryLevel) { context.beginPath(); context.moveTo(startX, y); context.lineTo(endX, y); context.stroke(); }
+  const startX2 = Math.floor(topLeft.x / primaryLevel) * primaryLevel;
+  const startY2 = Math.floor(topLeft.y / primaryLevel) * primaryLevel;
+  const endX2 = Math.ceil(bottomRight.x / primaryLevel) * primaryLevel;
+  const endY2 = Math.ceil(bottomRight.y / primaryLevel) * primaryLevel;
+  context.strokeStyle = 'rgba(255,255,255,' + (0.035 * gridOpacity / 0.2) + ')';
+  for (let x = startX2; x <= endX2; x += primaryLevel) { context.beginPath(); context.moveTo(x, startY2); context.lineTo(x, endY2); context.stroke(); }
+  for (let y = startY2; y <= endY2; y += primaryLevel) { context.beginPath(); context.moveTo(startX2, y); context.lineTo(endX2, y); context.stroke(); }
+}
+
+function drawCoordinateAxes(invZoom) {
+  if (!preferences.showAxes) return;
+  const topLeft = convertScreenToWorld(0, 0), bottomRight = convertScreenToWorld(window.innerWidth, window.innerHeight);
+  context.strokeStyle = 'rgba(200,80,80,0.6)'; context.lineWidth = 2 * invZoom;
+  context.beginPath(); context.moveTo(0, topLeft.y); context.lineTo(0, bottomRight.y); context.stroke();
+  context.strokeStyle = 'rgba(80,200,80,0.6)'; context.lineWidth = 2 * invZoom;
+  context.beginPath(); context.moveTo(topLeft.x, 0); context.lineTo(bottomRight.x, 0); context.stroke();
+  context.fillStyle = 'rgba(255,200,100,0.8)';
+  context.beginPath(); context.arc(0, 0, 4 * invZoom, 0, Math.PI * 2); context.fill();
+}
+
+function renderFrame() {
+  context.fillStyle = '#0a0a0a';
+  context.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+  context.save();
+  const centerX = window.innerWidth * 0.5, centerY = window.innerHeight * 0.5;
+  context.translate(centerX, centerY);
+  context.scale(viewState.zoom, viewState.zoom);
+  context.translate(-viewState.x, -viewState.y);
+
+  const invZoom = 1 / viewState.zoom;
+  drawGridLines(invZoom);
+  drawCoordinateAxes(invZoom);
+
+  const halfW = window.innerWidth * invZoom * 0.5 + 100;
+  const halfH = window.innerHeight * invZoom * 0.5 + 100;
+  const visibleMinX = viewState.x - halfW;
+  const visibleMaxX = viewState.x + halfW;
+  const visibleMinY = viewState.y - halfH;
+  const visibleMaxY = viewState.y + halfH;
+
+  rebuildEdgeCache();
+
+  const nodeCount = nodes.length;
+  const edgeCount = edges.length;
+  const renderLimit = preferences.renderLimit;
+  const shouldSimplify = nodeCount > renderLimit;
+  perfStats.simplifiedRender = shouldSimplify;
+
+  // Render edges
+  for (let i = 0; i < edgeCount; i++) {
+    const edge = edges[i];
+    const sourceNode = edge._sourceNode;
+    const targetNode = edge._targetNode;
+    if (!sourceNode || !targetNode) continue;
+    const sx = sourceNode.x, sy = sourceNode.y, tx = targetNode.x, ty = targetNode.y;
+    if ((sx < visibleMinX && tx < visibleMinX) || (sx > visibleMaxX && tx > visibleMaxX) ||
+        (sy < visibleMinY && ty < visibleMinY) || (sy > visibleMaxY && ty > visibleMaxY)) continue;
+
+    const dx = tx - sx, dy = ty - sy;
+    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = dx / distance, ny = dy / distance;
+    const startX = sx + nx * sourceNode.r;
+    const startY = sy + ny * sourceNode.r;
+    const endX = tx - nx * targetNode.r;
+    const endY = ty - ny * targetNode.r;
+    const isHover = edge === hoveredEdge;
+    const baseWidth = edge.thickness || 2;
+    context.strokeStyle = edge.color;
+    context.lineWidth = (isHover ? baseWidth * 1.8 : baseWidth) * invZoom;
+    context.globalAlpha = isHover ? 1 : 0.7;
+    context.beginPath(); context.moveTo(startX, startY); context.lineTo(endX, endY); context.stroke();
+    context.globalAlpha = 1;
+    if (!shouldSimplify) {
+      drawArrowHead(startX, startY, endX, endY, edge.color, targetNode.r, baseWidth, invZoom);
+      if (preferences.showLabels && distance > 40) {
+        drawEdgeLabelText(startX, startY, endX, endY, edge.label, edge.labelColor || edge.color);
+      }
+    }
+  }
+
+  // Render nodes - batch simple ones first
+  if (shouldSimplify) {
+    // Fast path: batch draw all simple nodes
+    context.globalAlpha = 0.6;
+    for (let i = 0; i < nodeCount; i++) {
+      const node = nodes[i];
+      const nx = node.x, ny = node.y, nr = node.r;
+      if (nx + nr < visibleMinX || nx - nr > visibleMaxX || ny + nr < visibleMinY || ny - nr > visibleMaxY) continue;
+      if (node === hoveredNode || node === selectedNode || node === draggingNode) continue;
+      context.fillStyle = node.color;
+      context.beginPath(); context.arc(nx, ny, nr, 0, Math.PI * 2); context.fill();
+    }
+    context.globalAlpha = 1;
+    // Detailed nodes
+    for (let i = 0; i < nodeCount; i++) {
+      const node = nodes[i];
+      const nx = node.x, ny = node.y, nr = node.r;
+      if (nx + nr < visibleMinX || nx - nr > visibleMaxX || ny + nr < visibleMinY || ny - nr > visibleMaxY) continue;
+      if (node === hoveredNode || node === selectedNode || node === draggingNode) {
+        drawSingleNode(node, invZoom);
+      }
+    }
+  } else {
+    for (let i = 0; i < nodeCount; i++) {
+      const node = nodes[i];
+      const nx = node.x, ny = node.y, nr = node.r;
+      if (nx + nr < visibleMinX || nx - nr > visibleMaxX || ny + nr < visibleMinY || ny - nr > visibleMaxY) continue;
+      drawSingleNode(node, invZoom);
+    }
+  }
+
+  context.restore();
+
+  frameCount++;
+  const now = performance.now();
+  perfStats.frameTime = now - perfStats.lastFrameTime;
+  perfStats.lastFrameTime = now;
+  if (now - lastFpsTime >= 1000) {
+    currentFps = frameCount;
+    frameCount = 0;
+    lastFpsTime = now;
+    const perfPanel = document.getElementById('perfPanel');
+    if (perfPanel && preferences.showPerformance) {
+      document.getElementById('perf-fps').textContent = currentFps;
+      document.getElementById('perf-frameTime').textContent = Math.round(perfStats.frameTime * 10) / 10 + 'ms';
+      document.getElementById('perf-nodes').textContent = nodeCount;
+      document.getElementById('perf-edges').textContent = edgeCount;
+      document.getElementById('perf-simplified').textContent = perfStats.simplifiedRender ? '开' : '关';
+    }
+  }
+}
+
+function animationLoop() {
+  simulatePhysicsEngine();
+  renderFrame();
+  requestAnimationFrame(animationLoop);
+}
+// ========== EVENT HANDLERS ==========
+function setupEventListeners() {
+  window.addEventListener('keydown', event => {
+    if (event.code === 'Space') { isSpacePressed = true; updateCanvasCursor(); }
+    if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) redo(); else undo();
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
+      event.preventDefault(); redo();
+    }
+  });
+  window.addEventListener('keyup', event => {
+    if (event.code === 'Space') { isSpacePressed = false; updateCanvasCursor(); }
+  });
+  canvas.addEventListener('mousedown', handleMouseDown);
+  canvas.addEventListener('mousemove', handleMouseMove);
+  canvas.addEventListener('mouseup', handleMouseUp);
+  canvas.addEventListener('wheel', handleWheel, { passive: false });
+  canvas.addEventListener('dblclick', handleDoubleClick);
+  canvas.addEventListener('contextmenu', event => event.preventDefault());
+  canvas.addEventListener('mouseleave', handleMouseUp);
+  canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+  canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+  canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+  canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+}
+
+function updateCanvasCursor() {
+  if (isSpacePressed || isPanning) canvas.className = 'cursor-grabbing';
+  else if (hoveredNode) canvas.className = 'cursor-pointer';
+  else canvas.className = 'cursor-grab';
+}
+
+function handleMouseDown(event) {
+  if (event.button === 1 || (event.button === 0 && isSpacePressed)) {
+    isPanning = true; panStart = { x: event.clientX, y: event.clientY };
+    viewStart = { x: viewState.x, y: viewState.y };
+    updateCanvasCursor();
+    event.preventDefault(); return;
+  }
+  if (event.button === 0) {
+    const worldPos = convertScreenToWorld(event.clientX, event.clientY);
+    const node = hitTestNode(worldPos.x, worldPos.y);
+    if (node) {
+      draggingNode = node;
+      dragOffset = { x: worldPos.x - node.x, y: worldPos.y - node.y };
+      selectedNode = node;
+      updateCanvasCursor();
+    } else {
+      selectedNode = null;
+    }
+  }
+}
+
+function handleMouseMove(event) {
+  if (isPanning) {
+    viewState.x = viewStart.x - (event.clientX - panStart.x) / viewState.zoom;
+    viewState.y = viewStart.y - (event.clientY - panStart.y) / viewState.zoom;
+    return;
+  }
+  if (draggingNode) {
+    const worldPos = convertScreenToWorld(event.clientX, event.clientY);
+    draggingNode.x = worldPos.x - dragOffset.x;
+    draggingNode.y = worldPos.y - dragOffset.y;
+    draggingNode.vx = 0; draggingNode.vy = 0;
+    return;
+  }
+  const worldPos = convertScreenToWorld(event.clientX, event.clientY);
+  const node = hitTestNode(worldPos.x, worldPos.y);
+  const edge = hitTestEdge(worldPos.x, worldPos.y);
+  hoveredNode = node; hoveredEdge = edge;
+  updateCanvasCursor();
+  if (node) showTooltipElement(node.name + (node.isLocked ? ' [已锁定]' : ''), event.clientX, event.clientY);
+  else if (edge) showTooltipElement((edge.label || '关联') + ' [粗细:' + (edge.thickness || 2) + ']', event.clientX, event.clientY);
+  else hideTooltipElement();
+}
+
+function handleMouseUp() {
+  if (isPanning) { isPanning = false; updateCanvasCursor(); }
+  draggingNode = null;
+}
+
+function handleWheel(event) {
+  event.preventDefault();
+  const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+  const newZoom = Math.max(viewState.minZoom, Math.min(viewState.maxZoom, viewState.zoom * zoomFactor));
+  const beforeWorld = convertScreenToWorld(event.clientX, event.clientY);
+  viewState.zoom = newZoom;
+  const afterWorld = convertScreenToWorld(event.clientX, event.clientY);
+  viewState.x += beforeWorld.x - afterWorld.x;
+  viewState.y += beforeWorld.y - afterWorld.y;
+}
+
+function handleDoubleClick(event) {
+  const worldPos = convertScreenToWorld(event.clientX, event.clientY);
+  const name = prompt('节点名称:', '新节点');
+  if (name && name.trim()) {
+    addNode(name.trim(), '#3b82f6', '#e2e8f0', 20, worldPos.x, worldPos.y);
+  }
+}
+
+// ========== TOUCH EVENTS ==========
+function handleTouchStart(event) {
+  event.preventDefault();
+  const touches = event.touches;
+  if (touches.length === 1) {
+    const worldPos = convertScreenToWorld(touches[0].clientX, touches[0].clientY);
+    const node = hitTestNode(worldPos.x, worldPos.y);
+    isLongPressTriggered = false;
+    if (node) {
+      draggingNode = node;
+      isTouchDragging = true;
+      touchDragStartWorld = { x: worldPos.x, y: worldPos.y };
+      dragOffset = { x: worldPos.x - node.x, y: worldPos.y - node.y };
+      selectedNode = node;
+      longPressNode = node;
+      longPressTimer = setTimeout(() => {
+        isLongPressTriggered = true;
+        draggingNode = null;
+        isTouchDragging = false;
+        openNodeFloatMenu(node.id);
+      }, 600);
+    } else {
+      isPanning = true;
+      panStart = { x: touches[0].clientX, y: touches[0].clientY };
+      viewStart = { x: viewState.x, y: viewState.y };
+    }
+  } else if (touches.length === 2) {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    isPanning = false; isTouchDragging = false; draggingNode = null;
+    isPinchGesture = true;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    touchStartDistance = Math.hypot(dx, dy);
+    touchStartZoom = viewState.zoom;
+    pinchCenter = { x: (touches[0].clientX + touches[1].clientX) * 0.5, y: (touches[0].clientY + touches[1].clientY) * 0.5 };
+    pinchViewStart = { x: viewState.x, y: viewState.y };
+  }
+}
+
+function handleTouchMove(event) {
+  event.preventDefault();
+  const touches = event.touches;
+  if (touches.length === 1) {
+    if (longPressTimer && isTouchDragging && draggingNode) {
+      const worldPos = convertScreenToWorld(touches[0].clientX, touches[0].clientY);
+      const moveDist = Math.hypot(worldPos.x - touchDragStartWorld.x, worldPos.y - touchDragStartWorld.y);
+      if (moveDist > 5 / viewState.zoom) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+    if (isTouchDragging && draggingNode) {
+      const worldPos = convertScreenToWorld(touches[0].clientX, touches[0].clientY);
+      draggingNode.x = worldPos.x - dragOffset.x;
+      draggingNode.y = worldPos.y - dragOffset.y;
+      draggingNode.vx = 0; draggingNode.vy = 0;
+    } else if (isPanning) {
+      viewState.x = viewStart.x - (touches[0].clientX - panStart.x) / viewState.zoom;
+      viewState.y = viewStart.y - (touches[0].clientY - panStart.y) / viewState.zoom;
+    }
+  } else if (touches.length === 2 && isPinchGesture) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    const distance = Math.hypot(dx, dy);
+    const zoomFactor = distance / touchStartDistance;
+    const newZoom = Math.max(viewState.minZoom, Math.min(viewState.maxZoom, touchStartZoom * zoomFactor));
+    const beforeWorld = convertScreenToWorld(pinchCenter.x, pinchCenter.y);
+    viewState.zoom = newZoom;
+    const afterWorld = convertScreenToWorld(pinchCenter.x, pinchCenter.y);
+    viewState.x = pinchViewStart.x + beforeWorld.x - afterWorld.x;
+    viewState.y = pinchViewStart.y + beforeWorld.y - afterWorld.y;
+  }
+}
+
+function handleTouchEnd(event) {
+  event.preventDefault();
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  if (event.touches.length < 2) isPinchGesture = false;
+  if (!event.touches.length) { isPanning = false; isTouchDragging = false; draggingNode = null; longPressNode = null; }
+  if (event.touches.length === 1 && isTouchDragging) {
+    isTouchDragging = false; draggingNode = null;
+    isPanning = true;
+    panStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    viewStart = { x: viewState.x, y: viewState.y };
+  }
+}
+// ========== TOOLTIP / TOAST ==========
+function showTooltipElement(text, x, y) {
+  const tooltip = document.getElementById('tooltip');
+  tooltip.textContent = text; tooltip.classList.add('show');
+  const rect = tooltip.getBoundingClientRect();
+  let left = x - rect.width * 0.5;
+  let top = y - rect.height - 12;
+  if (left < 4) left = 4;
+  if (left + rect.width > window.innerWidth - 4) left = window.innerWidth - rect.width - 4;
+  if (top < 4) top = y + 16;
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+function hideTooltipElement() { document.getElementById('tooltip').classList.remove('show'); }
+
+function showToastMessage(message, isSuccess) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = isSuccess ? 'ok' : 'err';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// ========== UI MANAGEMENT (Throttled) ==========
+function updateUserInterfaceImpl() {
+  document.getElementById('node-count').textContent = '(' + nodes.length + ')';
+  document.getElementById('edge-count').textContent = '(' + edges.length + ')';
+
+  const nodeListElement = document.getElementById('node-list');
+  if (nodes.length === 0) {
+    nodeListElement.innerHTML = '<div class="empty-state">暂无节点</div>';
+  } else {
+    let html = '';
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = nodes[i];
+      const lockIcon = node.isLocked ? '<span class="lock-indicator">■</span>' : '';
+      html += '<div class="item-row">' +
+        '<span class="dot" style="background:' + node.color + '"></span>' +
+        '<span class="name">' + escapeHtmlString(node.name) + '</span>' +
+        lockIcon +
+        '<div class="actions">' +
+        '<button class="action-btn lock" onclick="toggleNodeLock(' + node.id + ',event)" title="' + (node.isLocked ? '解锁' : '锁定') + '">' + (node.isLocked ? '□' : '■') + '</button>' +
+        '<button class="action-btn edit" onclick="openNodeFloatMenu(' + node.id + ',event)" title="调整">⚙</button>' +
+        '<button class="action-btn del" onclick="removeNode(' + node.id + ')" title="删除">×</button>' +
+        '</div></div>';
+    }
+    nodeListElement.innerHTML = html;
+  }
+
+  const edgeListElement = document.getElementById('edge-list');
+  if (edges.length === 0) {
+    edgeListElement.innerHTML = '<div class="empty-state">暂无关系</div>';
+  } else {
+    let html = '';
+    for (let i = 0, len = edges.length; i < len; i++) {
+      const edge = edges[i];
+      const sourceNode = nodeIndexMap.get(edge.source);
+      const targetNode = nodeIndexMap.get(edge.target);
+      html += '<div class="item-row">' +
+        '<span class="dot" style="background:' + edge.color + '"></span>' +
+        '<span class="name">' + (sourceNode ? escapeHtmlString(sourceNode.name) : '?') + ' → ' +
+        (targetNode ? escapeHtmlString(targetNode.name) : '?') +
+        (edge.label ? ' (' + escapeHtmlString(edge.label) + ')' : '') +
+        ' <span style="color:#555">[' + (edge.thickness || 2) + ']</span></span>' +
+        '<div class="actions">' +
+        '<button class="action-btn edit" onclick="openEdgeFloatMenu(&#39;' + edge.id + '&#39;,event)" title="调整">⚙</button>' +
+        '<button class="action-btn del" onclick="removeEdge(&#39;' + edge.id + '&#39;)" title="删除">×</button>' +
+        '</div></div>';
+    }
+    edgeListElement.innerHTML = html;
+  }
+
+  const sourceSelect = document.getElementById('edge-source');
+  const targetSelect = document.getElementById('edge-target');
+  let options = '<option value="">选择节点</option>';
+  for (let i = 0, len = nodes.length; i < len; i++) {
+    const node = nodes[i];
+    options += '<option value="' + node.id + '">' + escapeHtmlString(node.name) + '</option>';
+  }
+  sourceSelect.innerHTML = options;
+  targetSelect.innerHTML = options;
+}
+
+// ========== NODE CRUD ==========
+function addNode(name, color, textColor, size, x, y) {
+  const nameInput = document.getElementById('node-name');
+  name = name || nameInput.value.trim();
+  if (!name) return;
+  color = color || document.getElementById('node-color').value;
+  textColor = textColor || document.getElementById('node-text-color').value;
+  size = size || parseInt(document.getElementById('node-size').value) || 20;
+  const px = x !== undefined ? x : (Math.random() - 0.5) * 200;
+  const py = y !== undefined ? y : (Math.random() - 0.5) * 200;
+  const newNode = {
+    id: nextNodeId++, name: name,
+    x: px, y: py, vx: 0, vy: 0,
+    color: color, textColor: textColor, r: size, mass: size / 10,
+    fontSize: null,
+    isLocked: false
+  };
+  nodes.push(newNode);
+  nodeIndexMap.set(newNode.id, newNode);
+  invalidateEdgeCache();
+  nameInput.value = '';
+  scheduleUpdateUserInterface();
+  saveHistoryState('添加节点');
+  if (nodes.length > 0 && !physicsRunning) { physicsRunning = true; updatePhysicsButtonText(); }
+}
+
+function removeNode(nodeId) {
+  nodes = nodes.filter(node => node.id !== nodeId);
+  edges = edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId);
+  if (selectedNode && selectedNode.id === nodeId) selectedNode = null;
+  if (editingNodeId === nodeId) closeNodeFloatMenu();
+  rebuildNodeIndex();
+  invalidateEdgeCache();
+  scheduleUpdateUserInterface();
+  saveHistoryState('删除节点');
+  if (nodes.length === 0) { physicsRunning = false; updatePhysicsButtonText(); }
+}
+
+function toggleNodeLock(nodeId, event) {
+  if (event) event.stopPropagation();
+  const node = nodeIndexMap.get(nodeId);
+  if (!node) return;
+  node.isLocked = !node.isLocked;
+  if (node.isLocked) { node.vx = 0; node.vy = 0; }
+  scheduleUpdateUserInterface();
+  saveHistoryState(node.isLocked ? '锁定节点' : '解锁节点');
+  showToastMessage(node.isLocked ? '节点已锁定' : '节点已解锁', true);
+}
+
+function toggleNodeLockFromFloatMenu() {
+  if (!editingNodeId) return;
+  const node = nodeIndexMap.get(editingNodeId);
+  if (!node) return;
+  node.isLocked = !node.isLocked;
+  const btn = document.getElementById('float-node-lock-btn');
+  btn.textContent = node.isLocked ? '解锁节点' : '锁定节点';
+  btn.className = node.isLocked ? 'btn btn-success' : 'btn btn-lock';
+}
+
+// ========== EDGE CRUD ==========
+function addEdge(source, target, label, color, labelColor, distance, thickness) {
+  source = source || parseInt(document.getElementById('edge-source').value);
+  target = target || parseInt(document.getElementById('edge-target').value);
+  if (!source || !target || source === target) return;
+  label = label !== undefined ? label : document.getElementById('edge-label').value.trim();
+  color = color || document.getElementById('edge-color').value;
+  labelColor = labelColor || document.getElementById('edge-text-color').value;
+  distance = distance || parseInt(document.getElementById('edge-distance').value) || 120;
+  thickness = thickness || parseInt(document.getElementById('edge-thickness').value) || 2;
+  const newEdge = {
+    id: generateUniqueId(),
+    source: source, target: target,
+    label: label, color: color, labelColor: labelColor, distance: distance,
+    thickness: Math.max(1, Math.min(10, thickness))
+  };
+  edges.push(newEdge);
+  invalidateEdgeCache();
+  document.getElementById('edge-label').value = '';
+  scheduleUpdateUserInterface();
+  saveHistoryState('添加关系');
+}
+
+function removeEdge(edgeId) {
+  edges = edges.filter(edge => edge.id !== edgeId);
+  invalidateEdgeCache();
+  if (editingEdgeId === edgeId) closeEdgeFloatMenu();
+  scheduleUpdateUserInterface();
+  saveHistoryState('删除关系');
+}
+
+function togglePhysics() {
+  physicsRunning = !physicsRunning;
+  updatePhysicsButtonText();
+}
+
+function updatePhysicsButtonText() {
+  const button = document.getElementById('physics-btn');
+  if (button) button.textContent = physicsRunning ? '暂停物理' : '恢复物理';
+}
+
+function resetPhysics() {
+  document.getElementById('inp-repulsion').value = 1500;
+  document.getElementById('inp-attraction').value = 0.05;
+  document.getElementById('inp-damping').value = 0.85;
+  document.getElementById('inp-centerForce').value = 0.01;
+  document.getElementById('inp-collision').value = 0.5;
+  updatePhysicsFromSliders();
+}
+
+function randomizeLayout() {
+  for (let i = 0, len = nodes.length; i < len; i++) {
+    const node = nodes[i];
+    if (!node.isLocked) {
+      node.x = (Math.random() - 0.5) * 400;
+      node.y = (Math.random() - 0.5) * 400;
+      node.vx = 0; node.vy = 0;
+    }
+  }
+  physicsRunning = true; updatePhysicsButtonText();
+  saveHistoryState('随机布局');
+}
+
+function clearAll() {
+  nodes = []; edges = []; nextNodeId = 1;
+  selectedNode = null; editingNodeId = null; editingEdgeId = null;
+  nodeIndexMap.clear();
+  closeNodeFloatMenu(); closeEdgeFloatMenu();
+  invalidateEdgeCache();
+  scheduleUpdateUserInterface();
+  physicsRunning = false; updatePhysicsButtonText();
+  try { localStorage.removeItem('infinite_graph_autosave_v3'); } catch(e) {}
+  const status = document.getElementById('auto-save-status');
+  if (status) status.textContent = '';
+  saveHistoryState('清空');
+}
+// ========== FLOAT MENU: NODE ==========
+function openNodeFloatMenu(nodeId, event) {
+  if (event) event.stopPropagation();
+  const node = nodeIndexMap.get(nodeId);
+  if (!node) return;
+  editingNodeId = nodeId;
+  document.getElementById('float-node-name').value = node.name;
+  document.getElementById('float-node-color').value = node.color;
+  document.getElementById('float-node-text-color').value = node.textColor || '#e2e8f0';
+  document.getElementById('float-node-size').value = node.r;
+  document.getElementById('float-node-fontsize').value = node.fontSize || '';
+  const lockBtn = document.getElementById('float-node-lock-btn');
+  lockBtn.textContent = node.isLocked ? '解锁节点' : '锁定节点';
+  lockBtn.className = node.isLocked ? 'btn btn-success' : 'btn btn-lock';
+  document.getElementById('nodeFloatMenu').classList.add('show');
+  document.getElementById('floatMenuOverlay').classList.add('show');
+}
+
+function closeNodeFloatMenu() {
+  editingNodeId = null;
+  document.getElementById('nodeFloatMenu').classList.remove('show');
+  document.getElementById('floatMenuOverlay').classList.remove('show');
+}
+
+function saveNodeFloatMenu() {
+  if (!editingNodeId) return;
+  const node = nodeIndexMap.get(editingNodeId);
+  if (!node) { closeNodeFloatMenu(); return; }
+  const newName = document.getElementById('float-node-name').value.trim();
+  if (newName) node.name = newName;
+  node.color = document.getElementById('float-node-color').value;
+  node.textColor = document.getElementById('float-node-text-color').value;
+  node.r = Math.max(10, Math.min(80, parseInt(document.getElementById('float-node-size').value) || 20));
+  node.mass = node.r / 10;
+  const fsVal = document.getElementById('float-node-fontsize').value.trim();
+  node.fontSize = fsVal ? Math.max(6, Math.min(1000, parseInt(fsVal))) : null;
+  closeNodeFloatMenu(); scheduleUpdateUserInterface(); saveHistoryState('调整节点'); showToastMessage('节点已更新', true);
+}
+
+// ========== FLOAT MENU: EDGE ==========
+function openEdgeFloatMenu(edgeId, event) {
+  if (event) event.stopPropagation();
+  const edge = edges.find(e => e.id === edgeId);
+  if (!edge) return;
+  editingEdgeId = edgeId;
+  const sourceSelect = document.getElementById('float-edge-source');
+  const targetSelect = document.getElementById('float-edge-target');
+  let options = '<option value="">选择节点</option>';
+  for (let i = 0, len = nodes.length; i < len; i++) {
+    const node = nodes[i];
+    options += '<option value="' + node.id + '">' + escapeHtmlString(node.name) + '</option>';
+  }
+  sourceSelect.innerHTML = options; targetSelect.innerHTML = options;
+  sourceSelect.value = edge.source; targetSelect.value = edge.target;
+  document.getElementById('float-edge-label').value = edge.label || '';
+  document.getElementById('float-edge-color').value = edge.color;
+  document.getElementById('float-edge-text-color').value = edge.labelColor || edge.color;
+  document.getElementById('float-edge-thickness').value = edge.thickness || 2;
+  document.getElementById('float-edge-distance').value = edge.distance;
+  document.getElementById('edgeFloatMenu').classList.add('show');
+  document.getElementById('floatMenuOverlay').classList.add('show');
+}
+
+function closeEdgeFloatMenu() {
+  editingEdgeId = null;
+  document.getElementById('edgeFloatMenu').classList.remove('show');
+  document.getElementById('floatMenuOverlay').classList.remove('show');
+}
+
+function saveEdgeFloatMenu() {
+  if (!editingEdgeId) return;
+  const edge = edges.find(e => e.id === editingEdgeId);
+  if (!edge) { closeEdgeFloatMenu(); return; }
+  const newSource = parseInt(document.getElementById('float-edge-source').value);
+  const newTarget = parseInt(document.getElementById('float-edge-target').value);
+  if (!newSource || !newTarget || newSource === newTarget) { showToastMessage('起点和终点不能相同', false); return; }
+  edge.source = newSource; edge.target = newTarget;
+  edge.label = document.getElementById('float-edge-label').value.trim();
+  edge.color = document.getElementById('float-edge-color').value;
+  edge.labelColor = document.getElementById('float-edge-text-color').value;
+  edge.thickness = Math.max(1, Math.min(10, parseInt(document.getElementById('float-edge-thickness').value) || 2));
+  edge.distance = parseInt(document.getElementById('float-edge-distance').value) || 120;
+  invalidateEdgeCache();
+  closeEdgeFloatMenu(); scheduleUpdateUserInterface(); saveHistoryState('调整关系'); showToastMessage('关系已更新', true);
+}
+
+function setupFloatMenuOverlay() {
+  document.getElementById('floatMenuOverlay').addEventListener('click', () => {
+    closeNodeFloatMenu(); closeEdgeFloatMenu();
+  });
+}
+
+// ========== HISTORY (Undo/Redo) ==========
+function saveHistoryState(actionName) {
+  if (isUndoRedoOperation) return;
+  if (historyIndex < historyStack.length - 1) {
+    historyStack = historyStack.slice(0, historyIndex + 1);
+  }
+  const snapshot = {
+    nodes: JSON.parse(JSON.stringify(nodes)),
+    edges: JSON.parse(JSON.stringify(edges)),
+    nextNodeId: nextNodeId,
+    action: actionName || '操作',
+    timestamp: Date.now()
+  };
+  historyStack.push(snapshot);
+  if (historyStack.length > maxHistorySize) historyStack.shift();
+  else historyIndex++;
+  updateHistoryUserInterface();
+}
+
+function restoreFromSnapshot(snapshot) {
+  nodes = JSON.parse(JSON.stringify(snapshot.nodes));
+  edges = JSON.parse(JSON.stringify(snapshot.edges));
+  nextNodeId = snapshot.nextNodeId;
+  rebuildNodeIndex();
+  invalidateEdgeCache();
+  selectedNode = null; editingNodeId = null; editingEdgeId = null;
+  closeNodeFloatMenu(); closeEdgeFloatMenu();
+  scheduleUpdateUserInterface();
+  if (nodes.length === 0) { physicsRunning = false; updatePhysicsButtonText(); }
+  else if (!physicsRunning) { physicsRunning = true; updatePhysicsButtonText(); }
+}
+
+function undo() {
+  if (historyIndex <= 0) return;
+  isUndoRedoOperation = true;
+  historyIndex--;
+  restoreFromSnapshot(historyStack[historyIndex]);
+  isUndoRedoOperation = false;
+  updateHistoryUserInterface();
+  showToastMessage('撤销: ' + historyStack[historyIndex + 1].action, true);
+}
+
+function redo() {
+  if (historyIndex >= historyStack.length - 1) return;
+  isUndoRedoOperation = true;
+  historyIndex++;
+  restoreFromSnapshot(historyStack[historyIndex]);
+  isUndoRedoOperation = false;
+  updateHistoryUserInterface();
+  showToastMessage('重做: ' + historyStack[historyIndex].action, true);
+}
+
+function updateHistoryUserInterface() {
+  const undoBtn = document.getElementById('undo-btn');
+  const redoBtn = document.getElementById('redo-btn');
+  const status = document.getElementById('history-status');
+  if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+  if (redoBtn) redoBtn.disabled = historyIndex >= historyStack.length - 1;
+  if (status) {
+    if (historyIndex >= 0 && historyStack[historyIndex]) {
+      status.textContent = (historyIndex + 1) + ' / ' + historyStack.length + ' · ' + historyStack[historyIndex].action;
+    } else {
+      status.textContent = '0 / 0';
+    }
+  }
+}
+// ========== AUTO SAVE ==========
+function toggleAutoSave() {
+  autoSaveEnabled = !autoSaveEnabled;
+  const btn = document.getElementById('autoSaveToggle');
+  if (btn) {
+    btn.textContent = autoSaveEnabled ? '开' : '关';
+    btn.classList.toggle('active', autoSaveEnabled);
+  }
+  if (autoSaveEnabled) startAutoSaveTimer();
+  else stopAutoSaveTimer();
+  showToastMessage(autoSaveEnabled ? '自动保存已开启' : '自动保存已关闭', true);
+}
+
+function startAutoSaveTimer() {
+  stopAutoSaveTimer();
+  autoSaveTimer = setInterval(performAutoSave, 30000);
+}
+
+function stopAutoSaveTimer() {
+  if (autoSaveTimer) { clearInterval(autoSaveTimer); autoSaveTimer = null; }
+}
+
+function manualSave() {
+  if (nodes.length === 0) { showToastMessage('没有数据可保存', false); return; }
+  performAutoSave();
+  const status = document.getElementById('auto-save-status');
+  if (status) status.textContent = '已手动保存 ' + new Date().toLocaleTimeString();
+  showToastMessage('数据已手动保存', true);
+}
+
+function performAutoSave() {
+  if (!autoSaveEnabled || nodes.length === 0) return;
+  const data = {
+    nodes: nodes.map(node => ({ id: node.id, name: node.name, color: node.color, textColor: node.textColor, r: node.r, fontSize: node.fontSize, x: node.x, y: node.y, isLocked: node.isLocked })),
+    edges: edges.map(edge => ({ source: edge.source, target: edge.target, label: edge.label, color: edge.color, labelColor: edge.labelColor, distance: edge.distance, thickness: edge.thickness })),
+    nextNodeId: nextNodeId,
+    view: { x: viewState.x, y: viewState.y, zoom: viewState.zoom },
+    physicsParams: physicsParams,
+    preferences: preferences,
+    physicsRunning: physicsRunning
+  };
+  try {
+    localStorage.setItem('infinite_graph_autosave_v3', JSON.stringify(data));
+    const status = document.getElementById('auto-save-status');
+    if (status && autoSaveEnabled) status.textContent = '已保存 ' + new Date().toLocaleTimeString();
+  } catch (e) {}
+}
+
+function loadAutoSaveData() {
+  try {
+    const saved = localStorage.getItem('infinite_graph_autosave_v3');
+    if (!saved) return false;
+    const data = JSON.parse(saved);
+    if (!data.nodes || !Array.isArray(data.nodes)) return false;
+    nodes = []; edges = [];
+    let maxId = 0;
+    data.nodes.forEach(nodeData => {
+      nodes.push({
+        id: nodeData.id, name: nodeData.name || '未命名',
+        x: nodeData.x !== undefined ? nodeData.x : (Math.random() - 0.5) * 300,
+        y: nodeData.y !== undefined ? nodeData.y : (Math.random() - 0.5) * 300,
+        vx: 0, vy: 0,
+        color: nodeData.color || '#3b82f6',
+        textColor: nodeData.textColor || '#e2e8f0',
+        r: nodeData.r || 20, mass: (nodeData.r || 20) / 10,
+        fontSize: nodeData.fontSize || null,
+        isLocked: !!nodeData.isLocked
+      });
+      if (nodeData.id > maxId) maxId = nodeData.id;
+    });
+    nextNodeId = maxId + 1;
+    rebuildNodeIndex();
+    if (data.edges && Array.isArray(data.edges)) {
+      data.edges.forEach(edgeData => {
+        edges.push({
+          id: generateUniqueId(),
+          source: edgeData.source, target: edgeData.target,
+          label: edgeData.label || '',
+          color: edgeData.color || '#64748b',
+          labelColor: edgeData.labelColor || edgeData.color || '#c8c8c8',
+          distance: edgeData.distance || 120,
+          thickness: edgeData.thickness || 2
+        });
+      });
+    }
+    invalidateEdgeCache();
+    if (data.view) {
+      viewState.x = data.view.x || 0;
+      viewState.y = data.view.y || 0;
+      viewState.zoom = data.view.zoom || 1;
+    }
+    if (data.physicsParams) {
+      Object.assign(physicsParams, data.physicsParams);
+      document.getElementById('inp-repulsion').value = physicsParams.repulsion;
+      document.getElementById('inp-attraction').value = physicsParams.attraction;
+      document.getElementById('inp-damping').value = physicsParams.damping;
+      document.getElementById('inp-centerForce').value = physicsParams.centerForce;
+      document.getElementById('inp-collision').value = physicsParams.collisionBounce;
+      updatePhysicsFromSliders();
+    }
+    if (data.preferences) {
+      Object.assign(preferences, data.preferences);
+      document.getElementById('showGrid').classList.toggle('active', preferences.showGrid);
+      document.getElementById('showAxes').classList.toggle('active', preferences.showAxes);
+      document.getElementById('showLabels').classList.toggle('active', preferences.showLabels);
+      document.getElementById('showPerformance').classList.toggle('active', preferences.showPerformance);
+      document.getElementById('perfPanel').classList.toggle('hidden', !preferences.showPerformance);
+      document.getElementById('inp-gridOpacity').value = Math.round(preferences.gridOpacity * 100);
+      document.getElementById('val-gridOpacity').textContent = Math.round(preferences.gridOpacity * 100);
+    }
+    if (data.physicsRunning !== undefined) {
+      physicsRunning = data.physicsRunning;
+      updatePhysicsButtonText();
+    }
+    scheduleUpdateUserInterface();
+    physicsRunning = true; updatePhysicsButtonText();
+    saveHistoryState('自动恢复');
+    showToastMessage('已自动恢复上次的数据', true);
+    return true;
+  } catch (e) { return false; }
+}
+
+// ========== IMPORT / EXPORT ==========
+function pickFile() { document.getElementById('file-input').click(); }
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) { showToastMessage('未选择文件', false); return; }
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const data = JSON.parse(event.target.result);
+      if (!data.nodes || !Array.isArray(data.nodes)) { showToastMessage('缺少 nodes 数组', false); return; }
+      nodes = []; edges = [];
+      let maxId = 0;
+      data.nodes.forEach(nodeData => {
+        nodes.push({
+          id: nodeData.id, name: nodeData.name || '未命名',
+          x: (Math.random() - 0.5) * 300, y: (Math.random() - 0.5) * 300,
+          vx: 0, vy: 0,
+          color: nodeData.color || '#3b82f6',
+          textColor: nodeData.textColor || '#e2e8f0',
+          r: nodeData.r || 20, mass: (nodeData.r || 20) / 10,
+          fontSize: nodeData.fontSize || null,
+          isLocked: !!nodeData.isLocked
+        });
+        if (nodeData.id > maxId) maxId = nodeData.id;
+      });
+      nextNodeId = maxId + 1;
+      rebuildNodeIndex();
+      if (data.edges && Array.isArray(data.edges)) {
+        data.edges.forEach(edgeData => {
+          edges.push({
+            id: generateUniqueId(),
+            source: edgeData.source, target: edgeData.target,
+            label: edgeData.label || '',
+            color: edgeData.color || '#64748b',
+            labelColor: edgeData.labelColor || edgeData.color || '#c8c8c8',
+            distance: edgeData.distance || 120,
+            thickness: edgeData.thickness || 2
+          });
+        });
+      }
+      invalidateEdgeCache();
+      scheduleUpdateUserInterface();
+      saveHistoryState('导入数据');
+      physicsRunning = true; updatePhysicsButtonText();
+      showToastMessage('导入成功: ' + nodes.length + ' 节点, ' + edges.length + ' 关系', true);
+      setTimeout(fitViewToGraph, 300);
+    } catch (error) { showToastMessage('JSON 解析失败: ' + error.message, false); }
+  };
+  reader.onerror = function() { showToastMessage('文件读取失败', false); };
+  reader.readAsText(file);
+  input.value = '';
+}
+// ========== HIGH RESOLUTION RENDER EXPORT ==========
+let hdExportSettings = { scale: 4, mode: 'viewport' }; // viewport | fullgraph
+
+function openHdExportMenu() {
+  document.getElementById('hdExportMenu').classList.add('show');
+  document.getElementById('floatMenuOverlay').classList.add('show');
+}
+
+function closeHdExportMenu() {
+  document.getElementById('hdExportMenu').classList.remove('show');
+  if (!document.getElementById('nodeFloatMenu').classList.contains('show') &&
+      !document.getElementById('edgeFloatMenu').classList.contains('show')) {
+    document.getElementById('floatMenuOverlay').classList.remove('show');
+  }
+}
+
+function setHdScale(scale) {
+  hdExportSettings.scale = scale;
+  document.querySelectorAll('.hd-scale-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.scale) === scale);
+  });
+}
+
+function setHdMode(mode) {
+  hdExportSettings.mode = mode;
+  document.querySelectorAll('.hd-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+
+function confirmHdExport() {
+  const select = document.getElementById('hd-export-scale');
+  if (select) hdExportSettings.scale = parseInt(select.value) || 4;
+  closeHdExportMenu();
+  exportHighResolutionRender(hdExportSettings.scale, hdExportSettings.mode);
+}
+
+function exportHighResolutionRender(scale, mode) {
+  if (nodes.length === 0) { showToastMessage('没有内容可导出', false); return; }
+  scale = Math.max(1, Math.min(32, scale || 4));
+  mode = mode || 'viewport';
+
+  let exportWidth, exportHeight, renderZoom, viewCenterX, viewCenterY;
+  const padding = 80;
+
+  if (mode === 'fullgraph') {
+    const bbox = computeBoundingBox(nodes);
+    exportWidth = Math.ceil((bbox.width + padding * 2) * scale);
+    exportHeight = Math.ceil((bbox.height + padding * 2) * scale);
+    const maxDim = Math.max(exportWidth, exportHeight);
+    if (maxDim > 32767) {
+      showToastMessage('导出尺寸过大 (>32767px)，请降低倍数', false);
+      return;
+    }
+    viewCenterX = (bbox.minX + bbox.maxX) * 0.5;
+    viewCenterY = (bbox.minY + bbox.maxY) * 0.5;
+    const zoomX = exportWidth / (bbox.width + padding * 2);
+    const zoomY = exportHeight / (bbox.height + padding * 2);
+    renderZoom = Math.min(zoomX, zoomY);
+  } else {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    exportWidth = Math.ceil(window.innerWidth * scale * dpr);
+    exportHeight = Math.ceil(window.innerHeight * scale * dpr);
+    const maxDim = Math.max(exportWidth, exportHeight);
+    if (maxDim > 32767) {
+      showToastMessage('导出尺寸过大 (>32767px)，请降低倍数', false);
+      return;
+    }
+    viewCenterX = viewState.x;
+    viewCenterY = viewState.y;
+    renderZoom = viewState.zoom * scale * dpr;
+  }
+
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = exportWidth;
+  exportCanvas.height = exportHeight;
+  const exportCtx = exportCanvas.getContext('2d', { alpha: false });
+
+  exportCtx.fillStyle = '#0a0a0a';
+  exportCtx.fillRect(0, 0, exportWidth, exportHeight);
+
+  exportCtx.save();
+  const centerX = exportWidth * 0.5;
+  const centerY = exportHeight * 0.5;
+  exportCtx.translate(centerX, centerY);
+  exportCtx.scale(renderZoom, renderZoom);
+  exportCtx.translate(-viewCenterX, -viewCenterY);
+
+  rebuildEdgeCache();
+  const invZoom = 1 / renderZoom;
+
+  const halfW = exportWidth * invZoom * 0.5 + 50;
+  const halfH = exportHeight * invZoom * 0.5 + 50;
+  const visibleMinX = viewCenterX - halfW;
+  const visibleMaxX = viewCenterX + halfW;
+  const visibleMinY = viewCenterY - halfH;
+  const visibleMaxY = viewCenterY + halfH;
+
+  const edgeCount = edges.length;
+  for (let i = 0; i < edgeCount; i++) {
+    const edge = edges[i];
+    const sourceNode = edge._sourceNode || nodeIndexMap.get(edge.source);
+    const targetNode = edge._targetNode || nodeIndexMap.get(edge.target);
+    if (!sourceNode || !targetNode) continue;
+    const sx = sourceNode.x, sy = sourceNode.y, tx = targetNode.x, ty = targetNode.y;
+    if (mode === 'viewport' && ((sx < visibleMinX && tx < visibleMinX) || (sx > visibleMaxX && tx > visibleMaxX) ||
+        (sy < visibleMinY && ty < visibleMinY) || (sy > visibleMaxY && ty > visibleMaxY))) continue;
+    const dx = tx - sx, dy = ty - sy;
+    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = dx / distance, ny = dy / distance;
+    const startX = sx + nx * sourceNode.r;
+    const startY = sy + ny * sourceNode.r;
+    const endX = tx - nx * targetNode.r;
+    const endY = ty - ny * targetNode.r;
+    const baseWidth = edge.thickness || 2;
+    exportCtx.strokeStyle = edge.color;
+    exportCtx.lineWidth = baseWidth * invZoom;
+    exportCtx.globalAlpha = 0.7;
+    exportCtx.beginPath(); exportCtx.moveTo(startX, startY); exportCtx.lineTo(endX, endY); exportCtx.stroke();
+    exportCtx.globalAlpha = 1;
+    const arrowEndX = endX, arrowEndY = endY;
+    const screenArrowLength = Math.min(distance * renderZoom * 0.35, 8 + baseWidth * 2);
+    const screenArrowWidth = 4 + baseWidth;
+    const arrowLength = screenArrowLength * invZoom;
+    const arrowWidth = screenArrowWidth * invZoom;
+    const ax1 = arrowEndX - arrowLength * nx + arrowWidth * ny;
+    const ay1 = arrowEndY - arrowLength * ny - arrowWidth * nx;
+    const ax2 = arrowEndX - arrowLength * nx - arrowWidth * ny;
+    const ay2 = arrowEndY - arrowLength * ny + arrowWidth * nx;
+    exportCtx.fillStyle = edge.color;
+    exportCtx.beginPath();
+    exportCtx.moveTo(arrowEndX, arrowEndY); exportCtx.lineTo(ax1, ay1); exportCtx.lineTo(ax2, ay2);
+    exportCtx.closePath(); exportCtx.fill();
+    if (preferences.showLabels && edge.label && edge.label.trim() !== '') {
+      const midX = (startX + endX) * 0.5, midY = (startY + endY) * 0.5;
+      exportCtx.font = '11px "Segoe UI",sans-serif';
+      const textWidth = exportCtx.measureText(edge.label).width;
+      exportCtx.fillStyle = 'rgba(10,10,10,0.85)';
+      exportCtx.fillRect(midX - textWidth * 0.5 - 4, midY - 7, textWidth + 8, 14);
+      exportCtx.fillStyle = edge.labelColor || edge.color;
+      exportCtx.textAlign = 'center'; exportCtx.textBaseline = 'middle';
+      exportCtx.fillText(edge.label, midX, midY);
+    }
+  }
+
+  const nodeCount = nodes.length;
+  for (let i = 0; i < nodeCount; i++) {
+    const node = nodes[i];
+    const nx = node.x, ny = node.y, nr = node.r;
+    if (mode === 'viewport' && (nx + nr < visibleMinX || nx - nr > visibleMaxX || ny + nr < visibleMinY || ny - nr > visibleMaxY)) continue;
+    exportCtx.fillStyle = node.color;
+    exportCtx.beginPath(); exportCtx.arc(nx, ny, nr, 0, Math.PI * 2); exportCtx.fill();
+    if (preferences.showLabels) {
+      const fontSize = node.fontSize || Math.max(9, Math.min(16, nr * 0.7));
+      exportCtx.font = '500 ' + fontSize + 'px "Segoe UI",sans-serif';
+      exportCtx.fillStyle = node.textColor || '#e2e8f0';
+      exportCtx.textAlign = 'center'; exportCtx.textBaseline = 'middle';
+      exportCtx.shadowColor = 'rgba(0,0,0,0.8)'; exportCtx.shadowBlur = 4;
+      exportCtx.fillText(node.name, nx, ny);
+      exportCtx.shadowBlur = 0;
+    }
+  }
+
+  exportCtx.restore();
+
+  exportCanvas.toBlob(function(blob) {
+    if (!blob) { showToastMessage('高清渲染失败', false); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'graph_' + mode + '_' + exportWidth + 'x' + exportHeight + '_' + scale + 'x.png';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    showToastMessage('已导出 ' + exportWidth + '×' + exportHeight + ' (' + scale + 'x, ' + (mode === 'fullgraph' ? '完整图谱' : '当前视图') + ')', true);
+  }, 'image/png');
+}
+
+// ========== UI BINDINGS ==========
+function updatePhysicsFromSliders() {
+  physicsParams.repulsion = parseFloat(document.getElementById('inp-repulsion').value);
+  physicsParams.attraction = parseFloat(document.getElementById('inp-attraction').value);
+  physicsParams.damping = parseFloat(document.getElementById('inp-damping').value);
+  physicsParams.centerForce = parseFloat(document.getElementById('inp-centerForce').value);
+  physicsParams.collisionBounce = parseFloat(document.getElementById('inp-collision').value);
+  document.getElementById('val-repulsion').textContent = physicsParams.repulsion;
+  document.getElementById('val-attraction').textContent = physicsParams.attraction;
+  document.getElementById('val-damping').textContent = physicsParams.damping;
+  document.getElementById('val-centerForce').textContent = physicsParams.centerForce;
+  document.getElementById('val-collision').textContent = physicsParams.collisionBounce;
+}
+
+function bindSliderControl(sliderId, valueId, callback) {
+  const slider = document.getElementById(sliderId);
+  const valueElement = document.getElementById(valueId);
+  if (!slider || !valueElement) return;
+  slider.oninput = () => {
+    const value = parseFloat(slider.value);
+    if (callback) callback(value);
+    valueElement.textContent = value;
+  };
+  valueElement.onclick = () => {
+    if (valueElement.isEditing) return;
+    valueElement.isEditing = 1; valueElement.contentEditable = 1;
+    valueElement.classList.add('editing'); valueElement.focus();
+    const range = document.createRange(); range.selectNodeContents(valueElement);
+    const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  };
+  valueElement.onblur = () => {
+    valueElement.isEditing = 0; valueElement.contentEditable = 0;
+    valueElement.classList.remove('editing');
+    let value = parseFloat(valueElement.textContent);
+    if (isNaN(value)) { valueElement.textContent = slider.value; return; }
+    const min = parseFloat(slider.min), max = parseFloat(slider.max), step = parseFloat(slider.step) || 1;
+    value = Math.max(min, Math.min(max, Math.round(value / step) * step));
+    slider.value = value; valueElement.textContent = value;
+    if (callback) callback(value);
+  };
+  valueElement.onkeydown = event => {
+    if (event.key === 'Enter') { event.preventDefault(); valueElement.blur(); }
+    if (event.key === 'Escape') { valueElement.textContent = slider.value; valueElement.blur(); }
+  };
+}
+
+function bindUserInterfaceElements() {
+  const panel = document.getElementById('uiPanel');
+  const collapseButton = document.getElementById('collapseBtn');
+  const expandButton = document.getElementById('expandBtn');
+  collapseButton.onclick = () => { panel.classList.add('collapsed'); expandButton.classList.add('visible'); };
+  expandButton.onclick = () => { panel.classList.remove('collapsed'); expandButton.classList.remove('visible'); };
+
+  document.querySelectorAll('.fold-header').forEach(header => {
+    header.onclick = () => {
+      const id = header.dataset.fold;
+      const section = document.getElementById(id);
+      if (!section) return;
+      const isExpanded = section.getAttribute('data-expanded') === 'true';
+      section.setAttribute('data-expanded', String(!isExpanded));
+    };
+  });
+
+  document.getElementById('showGrid').onclick = function() {
+    preferences.showGrid = preferences.showGrid ? 0 : 1;
+    this.classList.toggle('active', preferences.showGrid);
+  };
+  document.getElementById('showAxes').onclick = function() {
+    preferences.showAxes = preferences.showAxes ? 0 : 1;
+    this.classList.toggle('active', preferences.showAxes);
+  };
+  document.getElementById('showLabels').onclick = function() {
+    preferences.showLabels = preferences.showLabels ? 0 : 1;
+    this.classList.toggle('active', preferences.showLabels);
+  };
+  document.getElementById('showPerformance').onclick = function() {
+    preferences.showPerformance = preferences.showPerformance ? 0 : 1;
+    this.classList.toggle('active', preferences.showPerformance);
+    document.getElementById('perfPanel').classList.toggle('hidden', !preferences.showPerformance);
+  };
+
+  const gridOpacitySlider = document.getElementById('inp-gridOpacity');
+  const gridOpacityValue = document.getElementById('val-gridOpacity');
+  gridOpacitySlider.oninput = () => {
+    preferences.gridOpacity = parseInt(gridOpacitySlider.value) / 100;
+    gridOpacityValue.textContent = gridOpacitySlider.value;
+  };
+  gridOpacityValue.onclick = () => {
+    if (gridOpacityValue.isEditing) return;
+    gridOpacityValue.isEditing = 1; gridOpacityValue.contentEditable = 1;
+    gridOpacityValue.classList.add('editing'); gridOpacityValue.focus();
+    const range = document.createRange(); range.selectNodeContents(gridOpacityValue);
+    const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  };
+  gridOpacityValue.onblur = () => {
+    gridOpacityValue.isEditing = 0; gridOpacityValue.contentEditable = 0;
+    gridOpacityValue.classList.remove('editing');
+    let value = parseInt(gridOpacityValue.textContent);
+    if (isNaN(value)) { gridOpacityValue.textContent = gridOpacitySlider.value; return; }
+    value = Math.max(0, Math.min(100, value));
+    preferences.gridOpacity = value / 100;
+    gridOpacitySlider.value = value; gridOpacityValue.textContent = value;
+  };
+  gridOpacityValue.onkeydown = event => {
+    if (event.key === 'Enter') { event.preventDefault(); gridOpacityValue.blur(); }
+    if (event.key === 'Escape') { gridOpacityValue.textContent = gridOpacitySlider.value; gridOpacityValue.blur(); }
+  };
+
+  const renderLimitSlider = document.getElementById('inp-renderLimit');
+  const renderLimitValue = document.getElementById('val-renderLimit');
+  renderLimitSlider.oninput = () => {
+    preferences.renderLimit = parseInt(renderLimitSlider.value);
+    renderLimitValue.textContent = preferences.renderLimit;
+  };
+
+  bindSliderControl('inp-repulsion', 'val-repulsion', value => physicsParams.repulsion = value);
+  bindSliderControl('inp-attraction', 'val-attraction', value => physicsParams.attraction = value);
+  bindSliderControl('inp-damping', 'val-damping', value => physicsParams.damping = value);
+  bindSliderControl('inp-centerForce', 'val-centerForce', value => physicsParams.centerForce = value);
+  bindSliderControl('inp-collision', 'val-collision', value => physicsParams.collisionBounce = value);
+}
+
+function setupKeyboardDismissHandlers() {
+  document.querySelectorAll('input[enterkeyhint="done"]').forEach(input => {
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); input.blur(); }
+    });
+  });
+}
+
+// ========== INIT ==========
+function togglePerfPanel() {
+  preferences.showPerformance = 0;
+  document.getElementById('showPerformance').classList.remove('active');
+  document.getElementById('perfPanel').classList.add('hidden');
+}
+
+function setupPerfPanelDrag() {
+  const panel = document.getElementById('perfPanel');
+  const header = document.getElementById('perfHeader');
+  if (!panel || !header) return;
+  let isDragging = false, startX, startY, startLeft, startTop;
+  header.addEventListener('mousedown', e => {
+    isDragging = true;
+    startX = e.clientX; startY = e.clientY;
+    const rect = panel.getBoundingClientRect();
+    startLeft = rect.left; startTop = rect.top;
+    header.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    panel.style.left = (startLeft + e.clientX - startX) + 'px';
+    panel.style.top = (startTop + e.clientY - startY) + 'px';
+    panel.style.transform = 'none';
+  });
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    header.style.cursor = 'grab';
+  });
+  header.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    isDragging = true;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    const rect = panel.getBoundingClientRect();
+    startLeft = rect.left; startTop = rect.top;
+    e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    panel.style.left = (startLeft + e.touches[0].clientX - startX) + 'px';
+    panel.style.top = (startTop + e.touches[0].clientY - startY) + 'px';
+    panel.style.transform = 'none';
+  }, { passive: false });
+  window.addEventListener('touchend', () => { isDragging = false; });
+}
+
+function initializeApplication() {
+  setupEventListeners();
+  bindUserInterfaceElements();
+  setupFloatMenuOverlay();
+  setupKeyboardDismissHandlers();
+  setupPerfPanelDrag();
+  scheduleUpdateUserInterface();
+  startAutoSaveTimer();
+  const loaded = loadAutoSaveData();
+  if (!loaded) {
+    saveHistoryState('初始状态');
+  }
+  requestAnimationFrame(animationLoop);
+}
+
+document.addEventListener('DOMContentLoaded', initializeApplication);
+// ========== EXPORT JSON (Optimized - omit default values) ==========
+function exportJSON() {
+  const data = {
+    nodes: nodes.map(node => {
+      const obj = { id: node.id };
+      if (node.name && node.name !== '未命名') obj.name = node.name;
+      if (node.color && node.color !== '#3b82f6') obj.color = node.color;
+      if (node.textColor && node.textColor !== '#e2e8f0') obj.textColor = node.textColor;
+      if (node.r && node.r !== 20) obj.r = node.r;
+      if (node.fontSize) obj.fontSize = node.fontSize;
+      if (node.isLocked) obj.isLocked = true;
+      return obj;
+    }),
+    edges: edges.map(edge => {
+      const obj = { source: edge.source, target: edge.target };
+      if (edge.label && edge.label.trim() !== '') obj.label = edge.label;
+      if (edge.color && edge.color !== '#64748b') obj.color = edge.color;
+      if (edge.labelColor && edge.labelColor !== (edge.color || '#64748b') && edge.labelColor !== '#c8c8c8') {
+        obj.labelColor = edge.labelColor;
+      }
+      if (edge.distance && edge.distance !== 120) obj.distance = edge.distance;
+      if (edge.thickness && edge.thickness !== 2) obj.thickness = edge.thickness;
+      return obj;
+    })
+  };
+  const jsonString = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'relationship_graph.json';
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  setTimeout(() => {
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+</script>
+</body>
+</html>

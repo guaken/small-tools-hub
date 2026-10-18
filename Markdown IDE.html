@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Markdown IDE - 极客终端版</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        /* ========== 基础重置与变量 ========== */
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a2e;
+            --bg-input: #0d0d14;
+            --border-color: #2a2a3e;
+            --border-active: #00ff41;
+            --accent-color: #00ff41;
+            --accent-hover: #00cc33;
+            --accent-dim: rgba(0, 255, 65, 0.1);
+            --accent-glow: 0 0 8px rgba(0, 255, 65, 0.4);
+            --danger-color: #ff3333;
+            --danger-hover: #cc0000;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888899;
+            --text-dim: #555566;
+            --font-mono: 'Consolas', 'Courier New', 'Roboto Mono', 'Menlo', monospace;
+            --font-ui: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            --radius: 4px;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+        ::selection { background: var(--accent-color); color: var(--bg-primary); }
+
+        /* ========== 顶部控制栏 ========== */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            height: 48px;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #current-filename {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: var(--accent-glow);
+        }
+
+        #word-count {
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-family: var(--font-mono);
+        }
+
+        /* ========== 按钮样式 ========== */
+        .btn {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            outline: none;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            border-color: var(--accent-color);
+            box-shadow: var(--accent-glow);
+        }
+
+        .btn.primary {
+            background: var(--accent-color);
+            color: var(--bg-primary);
+            border-color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .btn.primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 0 12px rgba(0, 255, 65, 0.6);
+        }
+
+        .btn.secondary {
+            background: transparent;
+            border-color: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn.secondary:hover {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        /* ========== 搜索栏 ========== */
+        .search-bar {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 6px 12px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-bar input:focus {
+            border-color: var(--accent-color);
+            box-shadow: var(--accent-glow);
+        }
+
+        /* ========== 工作区 ========== */
+        .workspace {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+
+        .preview-pane {
+            flex: 1;
+            order: 1;
+            min-height: 0;
+            padding: 16px 24px;
+            overflow-y: auto;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .editor-pane {
+            flex: 1;
+            order: 2;
+            min-height: 0;
+            display: flex;
+            position: relative;
+        }
+
+        .line-numbers {
+            width: 50px;
+            background: var(--bg-secondary);
+            color: var(--text-dim);
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 12px 8px;
+            text-align: right;
+            user-select: none;
+            overflow: hidden;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .line-numbers div { height: 22.4px; }
+
+        #editor {
+            flex: 1;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: none;
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+
+        #editor::placeholder { color: var(--text-dim); }
+        #editor:focus { box-shadow: inset 0 0 0 1px var(--accent-color); }
+
+        /* ========== 预览面板样式 ========== */
+        .preview-pane h1, .preview-pane h2, .preview-pane h3,
+        .preview-pane h4, .preview-pane h5, .preview-pane h6 {
+            color: var(--accent-color);
+            margin: 1.2em 0 0.6em 0;
+            font-family: var(--font-mono);
+            text-shadow: var(--accent-glow);
+        }
+
+        .preview-pane h1 { font-size: 2em; border-bottom: 2px solid var(--accent-color); padding-bottom: 0.3em; }
+        .preview-pane h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; }
+        .preview-pane h3 { font-size: 1.3em; }
+
+        .preview-pane p { margin: 0.8em 0; color: var(--text-primary); }
+
+        .preview-pane a { color: var(--accent-color); text-decoration: underline; }
+
+        .preview-pane code {
+            background: var(--bg-tertiary);
+            color: var(--accent-color);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: var(--font-mono);
+            font-size: 0.9em;
+        }
+
+        .preview-pane pre {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .preview-pane pre code {
+            background: transparent;
+            padding: 0;
+            color: var(--text-primary);
+        }
+
+        .preview-pane blockquote {
+            border-left: 4px solid var(--accent-color);
+            padding: 8px 16px;
+            margin: 1em 0;
+            background: var(--accent-dim);
+            border-radius: 0 var(--radius) var(--radius) 0;
+        }
+
+        .preview-pane table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+        }
+
+        .preview-pane th, .preview-pane td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .preview-pane th {
+            background: var(--bg-tertiary);
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .preview-pane tr:nth-child(even) { background: var(--bg-secondary); }
+
+        .preview-pane ul, .preview-pane ol {
+            padding-left: 24px;
+            margin: 0.8em 0;
+        }
+
+        .preview-pane li { margin: 0.3em 0; }
+
+        .preview-pane img {
+            max-width: 100%;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+        }
+
+        .preview-pane hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 1.5em 0;
+        }
+
+        /* ========== 大纲侧边栏 ========== */
+        .toc-sidebar {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 260px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            transform: translateX(100%);
+            transition: transform 0.2s ease;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toc-sidebar.active { transform: translateX(0); }
+
+        .toc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .toc-header span:last-child {
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .toc-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .toc-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            transition: all 0.1s;
+        }
+
+        .toc-item:hover {
+            background: var(--accent-dim);
+            color: var(--accent-color);
+        }
+
+        .toc-item.h2 { padding-left: 20px; }
+        .toc-item.h3 { padding-left: 32px; font-size: 13px; }
+
+        /* ========== 模态框 ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 560px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            outline: none;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--accent-color);
+            box-shadow: var(--accent-glow);
+        }
+
+        /* ========== 状态栏 ========== */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 16px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-dim);
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .status-bar .status-left,
+        .status-bar .status-right {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            margin-right: 6px;
+            box-shadow: var(--accent-glow);
+        }
+
+        .status-indicator.saved { background: var(--accent-color); }
+
+        .status-indicator.unsaved {
+            background: #ffaa00;
+            box-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
+        }
+
+        /* ========== 终端光标动画 ========== */
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--accent-color);
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+            margin-left: 2px;
+        }
+
+        /* ========== 响应式：移动端 ========== */
+        @media (max-width: 768px) {
+            .workspace {
+                flex-direction: column;
+            }
+
+            .preview-pane {
+                order: 1;
+                flex: 1;
+                min-height: 0;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .editor-pane {
+                order: 2;
+                flex: 1;
+                min-height: 0;
+                border-right: none;
+            }
+
+            .top-bar {
+                flex-wrap: wrap;
+                height: auto;
+                padding: 8px;
+                gap: 6px;
+            }
+
+            .top-bar > div:nth-child(2) {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部控制栏 -->
+<div class="top-bar">
+    <div class="file-info">
+        <span id="current-filename">未命名.md</span>
+        <span style="color: var(--text-dim); font-size: 12px;" id="word-count">0 字 | 0 行</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        <button class="btn secondary" id="btn-save">保存</button>
+        <button class="btn secondary" id="btn-import">导入</button>
+        <button class="btn secondary" id="btn-export">导出</button>
+        <button class="btn secondary" id="btn-view-mode">切换</button>
+        <button class="btn secondary" id="btn-toc">大纲</button>
+        <button class="btn secondary" id="btn-settings">设置</button>
+    </div>
+</div>
+
+<!-- 搜索栏 -->
+<div class="search-bar" id="search-bar">
+    <input type="text" placeholder="> 搜索文档内容..." id="search-input">
+    <button class="btn secondary" style="padding: 2px 8px;" onclick="document.getElementById('search-bar').style.display='none'">X</button>
+</div>
+
+<!-- 工作区 -->
+<div class="workspace" id="workspace">
+    <div class="preview-pane markdown-body" id="preview-pane"></div>
+    <div class="editor-pane" id="editor-pane">
+        <div class="line-numbers" id="line-numbers">1</div>
+        <textarea id="editor" placeholder="> 在此输入 Markdown 内容..."></textarea>
+    </div>
+    <div class="toc-sidebar" id="toc-sidebar">
+        <div class="toc-header">
+            <span>> 文档大纲</span>
+            <span id="btn-close-toc">[X]</span>
+        </div>
+        <div class="toc-content" id="toc-content"></div>
+    </div>
+</div>
+
+<!-- 状态栏 -->
+<div class="status-bar">
+    <div class="status-left">
+        <span><span class="status-indicator saved" id="save-status"></span>已保存</span>
+        <span>UTF-8</span>
+        <span>Markdown</span>
+    </div>
+    <div class="status-right">
+        <span id="cursor-pos">Ln 1, Col 1</span>
+        <span>v2.0.0</span>
+    </div>
+</div>
+
+<!-- 设置模态框 -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span>> 编辑器设置</span>
+            <button class="btn secondary" onclick="closeModal('settings-modal')">[X]</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>主题模式</label>
+                <select id="setting-theme" style="width:100%; background:var(--bg-input); border:1px solid var(--border-color); padding:8px; border-radius:4px; color:#fff; font-family:var(--font-mono);">
+                    <option value="dark">终端绿 (默认)</option>
+                    <option value="blue">冷色极简</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>编辑器字号</label>
+                <input type="number" id="setting-fontsize" value="14" min="12" max="24">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="saveSettings()">保存设置</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // 依赖引入
+    // ============================================================
+    const loadScript = (src, callback) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = callback;
+        document.body.appendChild(s);
+    };
+
+    let markedReady = false;
+    loadScript('https://cdn.jsdelivr.net/npm/marked/marked.min.js', () => {
+        markedReady = true;
+        renderPreview();
+    });
+    loadScript('https://cdn.jsdelivr.net/npm/prismjs/prism.js', () => {
+        const langs = ['javascript', 'css', 'html', 'bash', 'python', 'sql', 'c', 'cpp', 'json'];
+        langs.forEach(l => {
+            let s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/prismjs/components/prism-' + l + '.min.js';
+            document.body.appendChild(s);
+        });
+    });
+
+    // ============================================================
+    // 核心状态 (单文档 localStorage 模式)
+    // ============================================================
+    const STORAGE_KEY = 'markdown_ide_content';
+    const SETTINGS_KEY = 'markdown_ide_settings';
+    const FILENAME_KEY = 'markdown_ide_filename';
+
+    let currentContent = '';
+    let settings = { theme: 'dark', fontSize: 14 };
+    let debounceTimer = null;
+
+    // ============================================================
+    // DOM 元素
+    // ============================================================
+    const editor = document.getElementById('editor');
+    const previewPane = document.getElementById('preview-pane');
+    const lineNumbers = document.getElementById('line-numbers');
+    const wordCountEl = document.getElementById('word-count');
+    const filenameEl = document.getElementById('current-filename');
+    const saveStatus = document.getElementById('save-status');
+
+    // ============================================================
+    // 初始化
+    // ============================================================
+    function init() {
+        loadSettings();
+        loadContent();
+
+        // 编辑器输入事件
+        editor.addEventListener('input', () => {
+            currentContent = editor.value;
+            updateLineNumbers();
+            updateStats();
+            updateCursorPos();
+            saveToStorage();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                renderPreview();
+                generateTOC();
+            }, 150);
+            setUnsavedIndicator();
+        });
+
+        // 滚动同步（编辑器 -> 预览 + 行号）
+        editor.addEventListener('scroll', () => {
+            const pct = editor.scrollTop / Math.max(1, editor.scrollHeight - editor.clientHeight);
+            previewPane.scrollTop = pct * (previewPane.scrollHeight - previewPane.clientHeight);
+            lineNumbers.scrollTop = editor.scrollTop;
+        });
+
+        // 光标位置
+        editor.addEventListener('click', updateCursorPos);
+        editor.addEventListener('keyup', updateCursorPos);
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveCurrentFile();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                document.getElementById('search-bar').style.display = 'flex';
+                document.getElementById('search-input').focus();
+            }
+        });
+
+        // 搜索高亮
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            if (!val) return;
+            const idx = currentContent.toLowerCase().indexOf(val);
+            if (idx > -1) {
+                editor.focus();
+                editor.setSelectionRange(idx, idx + val.length);
+            }
+        });
+
+        // 绑定按钮事件
+        bindEvents();
+
+        // 初始渲染
+        renderPreview();
+        generateTOC();
+        updateLineNumbers();
+        updateStats();
+        setSavedIndicator();
+    }
+
+    // ============================================================
+    // 存储 (localStorage 单文档模式)
+    // ============================================================
+    function loadContent() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved !== null) {
+            editor.value = saved;
+            currentContent = saved;
+        }
+        const fn = localStorage.getItem(FILENAME_KEY);
+        if (fn) {
+            filenameEl.innerText = fn;
+        }
+    }
+
+    function saveToStorage() {
+        localStorage.setItem(STORAGE_KEY, editor.value);
+        localStorage.setItem(FILENAME_KEY, filenameEl.innerText);
+    }
+
+    // ============================================================
+    // 保存
+    // ============================================================
+    function saveCurrentFile() {
+        saveToStorage();
+        setSavedIndicator();
+        const btn = document.getElementById('btn-save');
+        const originalText = btn.innerText;
+        btn.innerText = '已保存!';
+        btn.classList.add('primary');
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.remove('primary');
+        }, 1500);
+    }
+
+    // ============================================================
+    // 导出 (修复: 使用 TextEncoder + BOM + 完整错误处理)
+    // ============================================================
+    function exportFile() {
+        const content = editor.value;
+        if (!content || content.trim() === '') {
+            
+            return;
+        }
+
+        try {
+            // 使用 TextEncoder 确保 UTF-8 编码正确
+            const encoder = new TextEncoder('utf-8');
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
+            const utf8Content = encoder.encode(content);
+            const blob = new Blob([bom, utf8Content], { type: 'text/markdown;charset=utf-8' });
+
+            // 创建临时下载链接
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filenameEl.innerText || '未命名.md';
+            a.style.display = 'none';
+
+            // 追加到 DOM 并触发点击
+            document.body.appendChild(a);
+            a.click();
+
+            // 清理
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+
+            // 反馈
+            const btn = document.getElementById('btn-export');
+            const originalText = btn.innerText;
+            btn.innerText = '已导出!';
+            btn.classList.add('primary');
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove('primary');
+            }, 1500);
+        } catch (err) {
+            console.error('导出失败:', err);
+            
+        }
+    }
+
+    // ============================================================
+    // 预览渲染
+    // ============================================================
+    function renderPreview() {
+        if (!markedReady) {
+            previewPane.innerHTML = '<div style="color:var(--text-dim)">> 正在加载解析器...</div>';
+            return;
+        }
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            highlight: function (code, lang) {
+                if (typeof Prism !== 'undefined' && Prism.languages[lang]) {
+                    return Prism.highlight(code, Prism.languages[lang], lang);
+                }
+                return code;
+            }
+        });
+        let html = marked.parse(currentContent);
+        // 为所有标题添加 id 属性，供大纲跳转使用
+        html = html.replace(/<(h[1-6])>/g, (match, p1) => {
+            const id = 'heading-' + Math.random().toString(36).substr(2, 9);
+            return '<' + p1 + ' id="' + id + '">';
+        });
+        // 为图片添加安全样式
+        html = html.replace(/<img/g, '<img style="max-width:100%; border-radius:5px;"');
+        previewPane.innerHTML = html;
+
+        // 渲染 Mermaid 图表
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+            mermaid.run({ querySelector: '.language-mermaid' });
+        }
+    }
+
+    // ============================================================
+    // 大纲生成 (修复: 添加跳转功能)
+    // ============================================================
+    function generateTOC() {
+        const headings = [];
+        const regex = /^(#{1,3})\s+(.*)$/gm;
+        let match;
+        while ((match = regex.exec(currentContent)) !== null) {
+            headings.push({ level: match[1].length, text: match[2] });
+        }
+        const tocContent = document.getElementById('toc-content');
+        tocContent.innerHTML = '';
+        if (headings.length === 0) {
+            tocContent.innerHTML = '<div style="color:var(--text-dim); padding:12px;">> 暂无标题</div>';
+            return;
+        }
+        headings.forEach(h => {
+            const div = document.createElement('div');
+            div.className = 'toc-item h' + h.level;
+            div.innerText = '#'.repeat(h.level) + ' ' + h.text;
+            // 修复: 点击大纲标题跳转到预览面板对应位置
+            div.addEventListener('click', () => {
+                // 在预览面板中查找对应标题
+                const headingElements = previewPane.querySelectorAll('h1, h2, h3');
+                for (const el of headingElements) {
+                    // 匹配文本内容（去掉 # 前缀和空白）
+                    const elText = el.innerText.replace(/^#+\s*/, '');
+                    if (elText === h.text) {
+                        // 平滑滚动到该标题
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        // 高亮效果
+                        el.style.textShadow = '0 0 12px rgba(0, 255, 65, 0.8)';
+                        setTimeout(() => {
+                            el.style.textShadow = '';
+                        }, 1500);
+                        break;
+                    }
+                }
+                // 移动端自动关闭大纲面板
+                if (window.innerWidth <= 768) {
+                    document.getElementById('toc-sidebar').classList.remove('active');
+                }
+            });
+            tocContent.appendChild(div);
+        });
+    }
+
+    // ============================================================
+    // 行号更新
+    // ============================================================
+    function updateLineNumbers() {
+        const lines = editor.value.split('\n').length;
+        let html = '';
+        for (let i = 1; i <= lines; i++) {
+            html += '<div>' + i + '</div>';
+        }
+        lineNumbers.innerHTML = html;
+    }
+
+    // ============================================================
+    // 字数统计
+    // ============================================================
+    function updateStats() {
+        const text = editor.value;
+        const chars = text.replace(/\s/g, '').length;
+        const lines = text.split('\n').length;
+        wordCountEl.innerText = chars + ' 字 | ' + lines + ' 行';
+    }
+
+    // ============================================================
+    // 光标位置
+    // ============================================================
+    function updateCursorPos() {
+        const val = editor.value;
+        const pos = editor.selectionStart;
+        const before = val.substring(0, pos);
+        const line = before.split('\n').length;
+        const col = pos - before.lastIndexOf('\n');
+        document.getElementById('cursor-pos').innerText = 'Ln ' + line + ', Col ' + col;
+    }
+
+    // ============================================================
+    // UI 交互
+    // ============================================================
+    function bindEvents() {
+        document.getElementById('btn-toc').addEventListener('click', () => {
+            document.getElementById('toc-sidebar').classList.toggle('active');
+        });
+        document.getElementById('btn-close-toc').addEventListener('click', () => {
+            document.getElementById('toc-sidebar').classList.remove('active');
+        });
+        document.getElementById('btn-view-mode').addEventListener('click', () => {
+            const ep = document.getElementById('editor-pane');
+            const pp = document.getElementById('preview-pane');
+            if (ep.style.display === 'none') {
+                ep.style.display = 'flex';
+                pp.style.display = 'block';
+            } else if (pp.style.display === 'none') {
+                ep.style.display = 'none';
+                pp.style.display = 'block';
+            } else {
+                ep.style.display = 'none';
+                pp.style.display = 'block';
+            }
+        });
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            document.getElementById('setting-theme').value = settings.theme;
+            document.getElementById('setting-fontsize').value = settings.fontSize;
+            document.getElementById('settings-modal').classList.add('active');
+        });
+        document.getElementById('btn-save').addEventListener('click', saveCurrentFile);
+        // 动态创建 file-input 元素（避免 DOM 时序问题）
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'file-input';
+        fileInput.accept = '.md,.markdown,.txt,.text';
+        fileInput.style.display = 'none';
+        document.body.appendChild(fileInput);
+
+        document.getElementById('btn-import').addEventListener('click', () => {
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 验证文件类型
+            const validExts = ['.md', '.markdown', '.txt', '.text'];
+            const fileName = file.name.toLowerCase();
+            const isValidType = validExts.some(ext => fileName.endsWith(ext));
+            if (!isValidType) {
+                
+                fileInput.value = '';
+                return;
+            }
+
+            // 验证文件大小（最大 5MB）
+            if (file.size > 5 * 1024 * 1024) {
+                
+                fileInput.value = '';
+                return;
+            }
+
+            // 显示导入中状态
+            const btn = document.getElementById('btn-import');
+            const originalText = btn.innerText;
+            btn.innerText = '正在导入...';
+            btn.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const text = evt.target.result;
+                    editor.value = text;
+                    currentContent = text;
+                    // 更新文件名（去掉扩展名，补上 .md）
+                    const nameWithoutExt = file.name.replace(/\.(md|markdown|txt|text)$/, '');
+                    filenameEl.innerText = nameWithoutExt + '.md';
+                    localStorage.setItem(FILENAME_KEY, filenameEl.innerText);
+                    updateLineNumbers();
+                    updateStats();
+                    renderPreview();
+                    generateTOC();
+                    setSavedIndicator();
+
+                    // 反馈
+                    btn.innerText = '已导入!';
+                    btn.classList.add('primary');
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.classList.remove('primary');
+                        btn.disabled = false;
+                    }, 1500);
+                } catch (err) {
+                    console.error('导入失败:', err);
+                    
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            };
+            reader.onerror = () => {
+                
+                btn.innerText = originalText;
+                btn.disabled = false;
+            };
+            reader.readAsText(file, 'UTF-8');
+
+            // 重置 input 以便重复导入同一文件
+            fileInput.value = '';
+        });
+        document.getElementById('btn-export').addEventListener('click', exportFile);
+    }
+
+    // ============================================================
+    // 设置
+    // ============================================================
+    function loadSettings() {
+        const saved = localStorage.getItem(SETTINGS_KEY);
+        if (saved) settings = JSON.parse(saved);
+        applyTheme();
+        if (settings.fontSize) {
+            editor.style.fontSize = settings.fontSize + 'px';
+            previewPane.style.fontSize = settings.fontSize + 'px';
+        }
+    }
+
+    function saveSettings() {
+        settings.theme = document.getElementById('setting-theme').value;
+        settings.fontSize = parseInt(document.getElementById('setting-fontsize').value) || 14;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        applyTheme();
+        editor.style.fontSize = settings.fontSize + 'px';
+        previewPane.style.fontSize = settings.fontSize + 'px';
+        closeModal('settings-modal');
+    }
+
+    function applyTheme() {
+        const root = document.documentElement;
+        if (settings.theme === 'blue') {
+            root.style.setProperty('--accent-color', '#3b82f6');
+            root.style.setProperty('--accent-hover', '#2563eb');
+        } else {
+            root.style.setProperty('--accent-color', '#00ff41');
+            root.style.setProperty('--accent-hover', '#00cc33');
+        }
+    }
+
+    // ============================================================
+    // 状态指示器
+    // ============================================================
+    function setSavedIndicator() {
+        saveStatus.className = 'status-indicator saved';
+        saveStatus.parentElement.innerHTML = '<span class="status-indicator saved"></span>已保存';
+    }
+
+    function setUnsavedIndicator() {
+        saveStatus.className = 'status-indicator unsaved';
+        saveStatus.parentElement.innerHTML = '<span class="status-indicator unsaved"></span>未保存';
+    }
+
+    // ============================================================
+    // 模态框工具函数
+    // ============================================================
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+    });
+
+    // ============================================================
+    // 启动应用
+    // ============================================================
+    window.onload = init;
+</script>
+
+</body>
+</html>

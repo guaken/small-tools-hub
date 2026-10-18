@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>LOD世界坐标菜单画布</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#0a0a0a;font-family:'Segoe UI',system-ui,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none}
+canvas{display:block;cursor:grab}
+.version-tag{position:fixed;top:12px;left:12px;color:rgba(255,255,255,.18);font-size:16px;font-family:'SF Mono',monospace;pointer-events:none;letter-spacing:1px}
+.hint{position:fixed;bottom:12px;left:12px;color:rgba(255,255,255,.2);font-size:11px;pointer-events:none;text-align:left;line-height:1.6}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="version-tag">LOD世界坐标菜单</div>
+<div class="hint">
+中键/空格+左键/双指: 平移画布<br>
+滚轮/捏合: 缩放 (0.01x ~ 200x)<br>
+点击☰按钮展开菜单，拖动标题移动位置<br>
+拖动滑块调整数值
+</div>
+<script>
+const config={showGrid:1,showAxes:1,gridOpacity:0.2};
+const viewport={x:0,y:0,zoom:1,minZoom:0.01,maxZoom:200};
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+let canvasWidth,canvasHeight,isSpaceDown=false;
+let activeMenu=null;
+let canvasPanState={isPanning:false,startScreen:{},startView:{}};
+let touchPinchState={isPinching:false,startDist:0,startZoom:1,center:{},view:{}};
+
+const layout={titleWidth:140,btnSize:28,gap:8,get totalWidth(){return this.titleWidth+this.gap+this.btnSize},titleHeight:28,panelTopOffset:4};
+
+function getCenter(){return{x:innerWidth/2,y:innerHeight/2}}
+function toWorld(screenX,screenY){const center=getCenter();return{x:(screenX-center.x)/viewport.zoom+viewport.x,y:(screenY-center.y)/viewport.zoom+viewport.y}}
+function toScreen(worldX,worldY){const center=getCenter();return{x:(worldX-viewport.x)*viewport.zoom+center.x,y:(worldY-viewport.y)*viewport.zoom+center.y}}
+function inRect(pointX,pointY,rectX,rectY,rectWidth,rectHeight){return pointX>=rectX&&pointX<=rectX+rectWidth&&pointY>=rectY&&pointY<=rectY+rectHeight}
+function inCircle(pointX,pointY,circleX,circleY,radius){return Math.hypot(pointX-circleX,pointY-circleY)<=radius}
+function fillRoundRect(x,y,width,height,radius,fillColor,strokeColor,lineWidth){ctx.fillStyle=fillColor;if(strokeColor){ctx.strokeStyle=strokeColor;ctx.lineWidth=lineWidth}ctx.beginPath();ctx.roundRect(x,y,width,height,radius);ctx.fill();if(strokeColor)ctx.stroke()}
+function setText(font,color,align,baseline){ctx.font=font;ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.textBaseline=baseline||'middle'}
+
+const noInteraction={hitTest:()=>false,onPress(){}};
+const types={
+  separator:{
+    height:16,
+    draw(x,y,width){ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1/viewport.zoom;ctx.beginPath();ctx.moveTo(x+12,y+8);ctx.lineTo(x+width-12,y+8);ctx.stroke()},
+    ...noInteraction
+  },
+  toggle:{
+    height:32,
+    draw(x,y,width,item,isHovered,isPressed){
+      const toggleWidth=32,toggleHeight=18,toggleRadius=toggleHeight/2,toggleX=x+width-toggleWidth,toggleY=y+2;
+      setText('12px "Segoe UI",system-ui,sans-serif',isHovered?'#ffffff':'#c8c8c8');ctx.fillText(item.label,x,y+12);
+      const fillColor=item.value?(isPressed?'rgba(110,197,255,0.3)':'rgba(110,197,255,0.15)'):(isPressed?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.04)');
+      fillRoundRect(toggleX,toggleY,toggleWidth,toggleHeight,toggleRadius,fillColor,item.value?'rgba(110,197,255,0.3)':'rgba(255,255,255,0.08)',1/viewport.zoom);
+      const dotRadius=(toggleHeight-4)/2,dotX=item.value?toggleX+toggleWidth-dotRadius-2:toggleX+dotRadius+2,dotY=toggleY+toggleHeight/2;
+      ctx.fillStyle=item.value?'#6ec5ff':'#666666';ctx.beginPath();ctx.arc(dotX,dotY,dotRadius,0,Math.PI*2);ctx.fill();
+    },
+    hitTest:()=>true,
+    onPress(item){item.value=!item.value;if(item.id==='showGrid')config.showGrid=item.value?1:0;else if(item.id==='showAxes')config.showAxes=item.value?1:0}
+  },
+  slider:{
+    height:48,
+    draw(x,y,width,item,isHovered,isPressed,itemIndex,menu){
+      const trackHeight=5,thumbSize=14,trackY=y+28,trackWidth=width-60,valueX=x+width-50;
+      setText('11px "Segoe UI",system-ui,sans-serif','#888888');ctx.fillText(item.label,x,y+8);
+      setText('500 11px "SF Mono","Consolas",monospace','#6ec5ff','center');ctx.fillText(String(item.value),valueX+20,y+8);
+      ctx.fillStyle='rgba(255,255,255,0.06)';ctx.beginPath();ctx.roundRect(x,trackY,trackWidth,trackHeight,trackHeight/2);ctx.fill();
+      const ratio=(item.value-item.min)/(item.max-item.min),fillWidth=trackWidth*ratio;
+      if(fillWidth>0){ctx.fillStyle='rgba(110,197,255,0.35)';ctx.beginPath();ctx.roundRect(x,trackY,fillWidth,trackHeight,trackHeight/2);ctx.fill()}
+      const thumbX=x+fillWidth,thumbY=trackY+trackHeight/2;
+      ctx.fillStyle=isHovered||(menu.isDraggingSlider&&menu.dragSliderItemIndex===itemIndex)?'#ffffff':'#6ec5ff';
+      ctx.shadowColor='rgba(110,197,255,0.35)';ctx.shadowBlur=6/viewport.zoom;
+      ctx.beginPath();ctx.arc(thumbX,thumbY,thumbSize/2,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    },
+    hitTest:()=>true,onPress(){},
+    onDrag(item,worldX,menu){
+      const panel=menu.panel,trackX=panel.worldX+12,trackWidth=panel.currentWidth-72;
+      item.value=Math.round(item.min+Math.max(0,Math.min(1,(worldX-trackX)/trackWidth))*(item.max-item.min));
+      if(item.id==='gridOpacity')config.gridOpacity=item.value/100;
+    }
+  },
+  info:{
+    height:28,
+    draw(x,y,width,item){
+      setText('11px "Segoe UI",system-ui,sans-serif','#888888');ctx.fillText(item.label,x,y+10);
+      setText('500 11px "SF Mono","Consolas",monospace','#6ec5ff','right');ctx.fillText(item.getValue?item.getValue():'',x+width,y+10);
+    },
+    ...noInteraction
+  }
+};
+
+function createMenu(menuConfig){
+  const originX=menuConfig.x||100,originY=menuConfig.y||-180;
+  const initialItems=menuConfig.items||[
+    {type:'toggle',id:'showGrid',label:'网格',value:true},
+    {type:'toggle',id:'showAxes',label:'坐标轴',value:true},
+    {type:'slider',id:'gridOpacity',label:'网格透明度',min:0,max:100,value:20},
+    {type:'separator'},
+    {type:'info',label:'缩放级别',getValue(){return viewport.zoom.toFixed(2)+'x'}},
+    {type:'info',label:'中心坐标',getValue(){return '('+viewport.x.toFixed(1)+', '+viewport.y.toFixed(1)+')'}}
+  ];
+  const initialHeight=calcPanelHeightFromItems(initialItems);
+  return{
+    title:{worldX:originX,worldY:originY,width:layout.titleWidth,height:layout.titleHeight,text:menuConfig.title||'LOD世界坐标菜单',fontSize:12,bgColor:'rgba(18,18,22,0.96)',borderColor:'rgba(255,255,255,0.12)',cornerRadius:4,isDragging:false,dragStartWorld:{},dragStartObjWorld:{}},
+    toggleBtn:{worldX:originX+layout.titleWidth+layout.gap,worldY:originY,size:layout.btnSize,bgColor:'rgba(18,18,22,0.96)',borderColor:'rgba(255,255,255,0.12)',cornerRadius:4,isOver:false},
+    panel:{worldX:originX,worldY:originY+layout.titleHeight+layout.panelTopOffset,expanded:true,currentWidth:layout.totalWidth,currentHeight:initialHeight,targetWidth:layout.totalWidth,targetHeight:initialHeight,collapsedWidth:0,collapsedHeight:0,bgColor:'rgba(18,18,22,0.96)',borderColor:'rgba(255,255,255,0.06)',cornerRadius:8,animSpeed:0.2,isDragging:false,dragStartWorld:{},dragStartObjWorld:{}},
+    isAttached:true,isAnimatingAttach:false,attachAnimProgress:0,attachAnimTargetX:0,attachAnimTargetY:0,attachAnimStartX:0,attachAnimStartY:0,attachAnimDuration:300,attachAnimStartTime:0,
+    get attachDetectWidth(){return layout.totalWidth},get attachDetectHeight(){return layout.titleHeight},attachTolerance:20,hotZoneRadius:40,
+    items:initialItems,
+    hoveredItemIndex:-1,pressedItemIndex:-1,isDraggingSlider:false,dragSliderItemIndex:-1
+  };
+}
+
+const menus=[
+  createMenu({x:100,y:-180,title:'LOD世界坐标菜单'})
+];
+
+function initCanvas(){
+  const pixelRatio=devicePixelRatio||1;
+  canvasWidth=canvas.width=innerWidth*pixelRatio;canvasHeight=canvas.height=innerHeight*pixelRatio;
+  canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';
+  ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+}
+window.addEventListener('resize',initCanvas);initCanvas();
+
+function hitTestTitle(menu,worldX,worldY){const title=menu.title;return inRect(worldX,worldY,title.worldX,title.worldY,title.width,title.height)}
+function hitTestBtn(menu,worldX,worldY){const button=menu.toggleBtn;return inRect(worldX,worldY,button.worldX,button.worldY,button.size,button.size)}
+function hitTestPanel(menu,worldX,worldY){
+  const panel=menu.panel;
+  if(!panel.expanded&&panel.currentWidth<10)return inCircle(worldX,worldY,panel.worldX,panel.worldY,menu.hotZoneRadius/viewport.zoom);
+  return inRect(worldX,worldY,panel.worldX,panel.worldY,panel.currentWidth,panel.currentHeight);
+}
+function getItemHeight(item){const definition=types[item.type];return definition?definition.height:0}
+function hitTestItem(menu,worldX,worldY){
+  const panel=menu.panel;if(!panel.expanded&&panel.currentWidth<10)return-1;
+  const localX=worldX-panel.worldX,localY=worldY-panel.worldY;
+  if(localX<0||localX>panel.currentWidth||localY<0||localY>panel.currentHeight)return-1;
+  let currentY=12;
+  for(let index=0;index<menu.items.length;index++){
+    const item=menu.items[index],height=getItemHeight(item),definition=types[item.type];
+    if(localY>=currentY&&localY<=currentY+height&&localX>=12&&localX<=panel.currentWidth-12&&definition&&definition.hitTest())return index;
+    currentY+=height+4;
+  }
+  return-1;
+}
+
+function getAttachTarget(menu){const title=menu.title;return{x:title.worldX,y:title.worldY+title.height+layout.panelTopOffset}}
+function inAttachRange(menu,panelX,panelY){
+  const target=getAttachTarget(menu),halfWidth=(menu.attachDetectWidth+menu.attachTolerance)/2,halfHeight=(menu.attachDetectHeight+menu.attachTolerance)/2;
+  return Math.abs(panelX-target.x)<=halfWidth&&Math.abs(panelY-target.y)<=halfHeight;
+}
+function startAttachAnim(menu){
+  const panel=menu.panel,target=getAttachTarget(menu);
+  menu.isAnimatingAttach=true;menu.attachAnimStartX=panel.worldX;menu.attachAnimStartY=panel.worldY;
+  menu.attachAnimTargetX=target.x;menu.attachAnimTargetY=target.y;menu.attachAnimStartTime=performance.now();
+}
+function updateAttachAnim(menu){
+  if(!menu.isAnimatingAttach)return;
+  const elapsed=performance.now()-menu.attachAnimStartTime,progress=Math.min(1,elapsed/menu.attachAnimDuration),eased=1-Math.pow(1-progress,3);
+  const panel=menu.panel;
+  panel.worldX=menu.attachAnimStartX+(menu.attachAnimTargetX-menu.attachAnimStartX)*eased;
+  panel.worldY=menu.attachAnimStartY+(menu.attachAnimTargetY-menu.attachAnimStartY)*eased;
+  if(progress>=1){menu.isAnimatingAttach=false;menu.isAttached=true;panel.worldX=menu.attachAnimTargetX;panel.worldY=menu.attachAnimTargetY}
+}
+function stopAttachAnim(menu){menu.isAnimatingAttach=false}
+function detachPanel(menu){stopAttachAnim(menu);menu.isAttached=false}
+function tryAttachPanel(menu){if(menu.isAttached||menu.isAnimatingAttach)return;if(inAttachRange(menu,menu.panel.worldX,menu.panel.worldY))startAttachAnim(menu)}
+function moveTitle(menu,deltaX,deltaY){
+  const title=menu.title,button=menu.toggleBtn,panel=menu.panel;
+  title.worldX+=deltaX;title.worldY+=deltaY;button.worldX+=deltaX;button.worldY+=deltaY;
+  if(menu.isAttached&&!menu.isAnimatingAttach){panel.worldX=title.worldX;panel.worldY=title.worldY+title.height+layout.panelTopOffset}
+}
+
+function processItemPress(menu,worldX,worldY){
+  const itemIndex=hitTestItem(menu,worldX,worldY);
+  if(itemIndex>=0){
+    const item=menu.items[itemIndex],definition=types[item.type];
+    if(definition&&definition.hitTest()){
+      menu.pressedItemIndex=itemIndex;
+      if(definition.onPress)definition.onPress(item);
+      if(item.type==='slider'){menu.isDraggingSlider=true;menu.dragSliderItemIndex=itemIndex;if(definition.onDrag)definition.onDrag(item,worldX,menu)}
+      return true;
+    }
+  }
+  return false;
+}
+
+function findMenuUnderPointer(worldX,worldY){
+  for(let index=menus.length-1;index>=0;index--){
+    const menu=menus[index];
+    if(hitTestBtn(menu,worldX,worldY)||hitTestTitle(menu,worldX,worldY)||hitTestPanel(menu,worldX,worldY))return menu;
+  }
+  return null;
+}
+
+function handlePointerDown(worldX,worldY,screenX,screenY,button,spaceActive,isTouch){
+  const targetMenu=findMenuUnderPointer(worldX,worldY);
+  if(targetMenu){
+    activeMenu=targetMenu;
+    if(hitTestBtn(activeMenu,worldX,worldY)){togglePanel(activeMenu);return true}
+    if(hitTestTitle(activeMenu,worldX,worldY)){activeMenu.title.isDragging=true;activeMenu.title.dragStartWorld={x:worldX,y:worldY};activeMenu.title.dragStartObjWorld={x:activeMenu.title.worldX,y:activeMenu.title.worldY};canvas.style.cursor='grabbing';return true}
+    if(hitTestPanel(activeMenu,worldX,worldY)){
+      if(processItemPress(activeMenu,worldX,worldY))return true;
+      if(activeMenu.isAttached)detachPanel(activeMenu);else stopAttachAnim(activeMenu);
+      activeMenu.panel.isDragging=true;activeMenu.panel.dragStartWorld={x:worldX,y:worldY};activeMenu.panel.dragStartObjWorld={x:activeMenu.panel.worldX,y:activeMenu.panel.worldY};canvas.style.cursor='grabbing';return true;
+    }
+  }
+  if(button===1||(button===0&&spaceActive)||isTouch){canvasPanState.isPanning=true;canvasPanState.startScreen={x:screenX,y:screenY};canvasPanState.startView={x:viewport.x,y:viewport.y};canvas.style.cursor='grabbing';return true}
+  return false;
+}
+
+function handlePointerMove(worldX,worldY,screenX,screenY){
+  for(let index=0;index<menus.length;index++)updateHover(menus[index],worldX,worldY);
+  if(activeMenu){
+    if(activeMenu.title.isDragging){
+      const deltaX=worldX-activeMenu.title.dragStartWorld.x,deltaY=worldY-activeMenu.title.dragStartWorld.y;
+      const newX=activeMenu.title.dragStartObjWorld.x+deltaX,newY=activeMenu.title.dragStartObjWorld.y+deltaY;
+      moveTitle(activeMenu,newX-activeMenu.title.worldX,newY-activeMenu.title.worldY);
+      if(!activeMenu.isAttached&&!activeMenu.isAnimatingAttach&&inAttachRange(activeMenu,activeMenu.panel.worldX,activeMenu.panel.worldY))startAttachAnim(activeMenu);
+      canvas.style.cursor='grabbing';return;
+    }
+    if(activeMenu.panel.isDragging){
+      activeMenu.panel.worldX=activeMenu.panel.dragStartObjWorld.x+(worldX-activeMenu.panel.dragStartWorld.x);
+      activeMenu.panel.worldY=activeMenu.panel.dragStartObjWorld.y+(worldY-activeMenu.panel.dragStartWorld.y);
+      canvas.style.cursor='grabbing';return;
+    }
+    if(activeMenu.isDraggingSlider&&activeMenu.dragSliderItemIndex>=0){
+      const item=activeMenu.items[activeMenu.dragSliderItemIndex],definition=types[item.type];
+      if(definition&&definition.onDrag)definition.onDrag(item,worldX,activeMenu);return;
+    }
+  }
+  if(canvasPanState.isPanning){
+    viewport.x=canvasPanState.startView.x-(screenX-canvasPanState.startScreen.x)/viewport.zoom;
+    viewport.y=canvasPanState.startView.y-(screenY-canvasPanState.startScreen.y)/viewport.zoom;
+  }
+}
+
+function handlePointerUp(){
+  if(activeMenu){
+    if(activeMenu.title.isDragging)activeMenu.title.isDragging=false;
+    if(activeMenu.panel.isDragging){activeMenu.panel.isDragging=false;tryAttachPanel(activeMenu)}
+    if(activeMenu.isDraggingSlider){activeMenu.isDraggingSlider=false;activeMenu.dragSliderItemIndex=-1}
+    if(activeMenu.pressedItemIndex>=0)activeMenu.pressedItemIndex=-1;
+    activeMenu=null;
+  }
+  if(canvasPanState.isPanning)canvasPanState.isPanning=false;
+  canvas.style.cursor='grab';
+}
+
+function setupEvents(){
+  window.addEventListener('keydown',event=>{if(event.code==='Space'){isSpaceDown=true;canvas.style.cursor='grab'}});
+  window.addEventListener('keyup',event=>{if(event.code==='Space'){isSpaceDown=false;canvas.style.cursor='grab'}});
+  canvas.addEventListener('mousedown',event=>{const worldPos=toWorld(event.clientX,event.clientY);if(handlePointerDown(worldPos.x,worldPos.y,event.clientX,event.clientY,event.button,isSpaceDown,false)){event.preventDefault();event.stopPropagation()}});
+  canvas.addEventListener('mousemove',event=>{const worldPos=toWorld(event.clientX,event.clientY);handlePointerMove(worldPos.x,worldPos.y,event.clientX,event.clientY)});
+  canvas.addEventListener('mouseup',handlePointerUp);
+  canvas.addEventListener('wheel',event=>{event.preventDefault();const factor=event.deltaY>0?0.9:1.1;const newZoom=Math.max(viewport.minZoom,Math.min(viewport.maxZoom,viewport.zoom*factor));const beforeWorld=toWorld(event.clientX,event.clientY);viewport.zoom=newZoom;const afterWorld=toWorld(event.clientX,event.clientY);viewport.x+=beforeWorld.x-afterWorld.x;viewport.y+=beforeWorld.y-afterWorld.y},{passive:false});
+  canvas.addEventListener('contextmenu',event=>event.preventDefault());
+  canvas.addEventListener('mouseleave',handlePointerUp);
+  canvas.addEventListener('touchstart',event=>{
+    event.preventDefault();const touches=event.touches;
+    if(touches.length===1){const worldPos=toWorld(touches[0].clientX,touches[0].clientY);handlePointerDown(worldPos.x,worldPos.y,touches[0].clientX,touches[0].clientY,0,false,true)}
+    else if(touches.length===2){
+      touchPinchState.isPinching=true;
+      touchPinchState.startDist=Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
+      touchPinchState.startZoom=viewport.zoom;
+      touchPinchState.center={x:(touches[0].clientX+touches[1].clientX)/2,y:(touches[0].clientY+touches[1].clientY)/2};
+      touchPinchState.view={x:viewport.x,y:viewport.y};
+    }
+  },{passive:false});
+  canvas.addEventListener('touchmove',event=>{
+    event.preventDefault();const touches=event.touches;
+    if(touches.length===1&&canvasPanState.isPanning){
+      viewport.x=canvasPanState.startView.x-(touches[0].clientX-canvasPanState.startScreen.x)/viewport.zoom;
+      viewport.y=canvasPanState.startView.y-(touches[0].clientY-canvasPanState.startScreen.y)/viewport.zoom;
+    }else if(touches.length===2&&touchPinchState.isPinching){
+      const dist=Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY),factor=dist/touchPinchState.startDist;
+      const newZoom=Math.max(viewport.minZoom,Math.min(viewport.maxZoom,touchPinchState.startZoom*factor));
+      const beforeWorld=toWorld(touchPinchState.center.x,touchPinchState.center.y);viewport.zoom=newZoom;const afterWorld=toWorld(touchPinchState.center.x,touchPinchState.center.y);
+      viewport.x+=beforeWorld.x-afterWorld.x;
+      viewport.x=touchPinchState.view.x-((touches[0].clientX+touches[1].clientX)/2-touchPinchState.center.x)/viewport.zoom;
+      viewport.y=touchPinchState.view.y-((touches[0].clientY+touches[1].clientY)/2-touchPinchState.center.y)/viewport.zoom;
+    }
+    if(touches.length===1&&activeMenu&&activeMenu.isDraggingSlider&&activeMenu.dragSliderItemIndex>=0){
+      const item=activeMenu.items[activeMenu.dragSliderItemIndex],definition=types[item.type];
+      if(definition&&definition.onDrag){const worldPos=toWorld(touches[0].clientX,touches[0].clientY);definition.onDrag(item,worldPos.x,activeMenu)}
+    }
+    if(touches.length===1&&activeMenu&&activeMenu.title.isDragging){
+      const worldPos=toWorld(touches[0].clientX,touches[0].clientY),deltaX=worldPos.x-activeMenu.title.dragStartWorld.x,deltaY=worldPos.y-activeMenu.title.dragStartWorld.y;
+      const newX=activeMenu.title.dragStartObjWorld.x+deltaX,newY=activeMenu.title.dragStartObjWorld.y+deltaY;
+      moveTitle(activeMenu,newX-activeMenu.title.worldX,newY-activeMenu.title.worldY);
+      if(!activeMenu.isAttached&&!activeMenu.isAnimatingAttach&&inAttachRange(activeMenu,activeMenu.panel.worldX,activeMenu.panel.worldY))startAttachAnim(activeMenu);
+    }
+    if(touches.length===1&&activeMenu&&activeMenu.panel.isDragging){
+      const worldPos=toWorld(touches[0].clientX,touches[0].clientY);
+      activeMenu.panel.worldX=activeMenu.panel.dragStartObjWorld.x+(worldPos.x-activeMenu.panel.dragStartWorld.x);
+      activeMenu.panel.worldY=activeMenu.panel.dragStartObjWorld.y+(worldPos.y-activeMenu.panel.dragStartWorld.y);
+    }
+  },{passive:false});
+  canvas.addEventListener('touchend',event=>{event.preventDefault();if(event.touches.length<2)touchPinchState.isPinching=false;handlePointerUp();if(!event.touches.length)canvasPanState.isPanning=false},{passive:false});
+  canvas.addEventListener('touchcancel',event=>{event.preventDefault();if(event.touches.length<2)touchPinchState.isPinching=false;handlePointerUp();if(!event.touches.length)canvasPanState.isPanning=false},{passive:false});
+}
+
+function updateHover(menu,worldX,worldY){
+  menu.toggleBtn.isOver=hitTestBtn(menu,worldX,worldY);menu.hoveredItemIndex=-1;
+  if(hitTestPanel(menu,worldX,worldY)){
+    const itemIndex=hitTestItem(menu,worldX,worldY);
+    if(itemIndex>=0){
+      menu.hoveredItemIndex=itemIndex;
+      const definition=types[menu.items[itemIndex].type];
+      if(definition&&definition.hitTest()){canvas.style.cursor='pointer';return}
+    }
+  }
+  if(!activeMenu)canvas.style.cursor=menu.toggleBtn.isOver?'pointer':'grab';
+}
+
+function togglePanel(menu){
+  const panel=menu.panel;panel.expanded=!panel.expanded;
+  if(panel.expanded){panel.targetWidth=layout.totalWidth;panel.targetHeight=calcPanelHeight(menu)}
+  else{panel.targetWidth=0;panel.targetHeight=0}
+}
+function calcPanelHeightFromItems(items){let height=24;for(let index=0;index<items.length;index++)height+=getItemHeight(items[index])+4;return height}
+function calcPanelHeight(menu){return calcPanelHeightFromItems(menu.items)}
+function updateMenuAnim(menu){
+  const panel=menu.panel;
+  if(panel.expanded)panel.targetHeight=calcPanelHeight(menu);
+  panel.currentWidth+=(panel.targetWidth-panel.currentWidth)*panel.animSpeed;
+  panel.currentHeight+=(panel.targetHeight-panel.currentHeight)*panel.animSpeed;
+  if(Math.abs(panel.currentWidth-panel.targetWidth)<0.5)panel.currentWidth=panel.targetWidth;
+  if(Math.abs(panel.currentHeight-panel.targetHeight)<0.5)panel.currentHeight=panel.targetHeight;
+  updateAttachAnim(menu);
+}
+
+function renderLoop(){renderFrame();for(let index=0;index<menus.length;index++)updateMenuAnim(menus[index]);requestAnimationFrame(renderLoop)}
+function renderFrame(){
+  ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,innerWidth,innerHeight);
+  ctx.save();const center=getCenter();ctx.translate(center.x,center.y);ctx.scale(viewport.zoom,viewport.zoom);ctx.translate(-viewport.x,-viewport.y);
+  if(config.showGrid)drawGrid();if(config.showAxes)drawAxes();drawAllMenus();ctx.restore();
+}
+
+function drawGrid(){
+  const levels=[2.5,5,10,20,40,80,160,320,640,1280,2560,5120];
+  let primary=levels[4];
+  for(let index=0;index<levels.length;index++){
+    const screenSize=levels[index]*viewport.zoom;
+    if(screenSize>=30&&screenSize<=80){primary=levels[index];break}
+    if(screenSize>80&&index>0){const prevSize=levels[index-1]*viewport.zoom;primary=prevSize>=30?levels[index-1]:levels[index];break}
+    if(index===levels.length-1)primary=levels[index];
+  }
+  const opacityScale=config.gridOpacity/0.2;
+  drawGridLines(primary*4,'rgba(255,255,255,'+(0.015*opacityScale)+')',1);
+  drawGridLines(primary,'rgba(255,255,255,'+(0.035*opacityScale)+')',1);
+  const fineLevel=primary/4;
+  if(fineLevel>=levels[0]&&fineLevel*viewport.zoom>=20)drawGridLines(fineLevel,'rgba(255,255,255,'+(0.018*opacityScale)+')',0.5);
+}
+function drawGridLines(gridSize,color,lineWidth){
+  const topLeft=toWorld(0,0),bottomRight=toWorld(innerWidth,innerHeight);
+  const startX=Math.floor(topLeft.x/gridSize)*gridSize,startY=Math.floor(topLeft.y/gridSize)*gridSize;
+  const endX=Math.ceil(bottomRight.x/gridSize)*gridSize,endY=Math.ceil(bottomRight.y/gridSize)*gridSize;
+  ctx.strokeStyle=color;ctx.lineWidth=lineWidth/viewport.zoom;
+  for(let gridX=startX;gridX<=endX;gridX+=gridSize){ctx.beginPath();ctx.moveTo(gridX,startY);ctx.lineTo(gridX,endY);ctx.stroke()}
+  for(let gridY=startY;gridY<=endY;gridY+=gridSize){ctx.beginPath();ctx.moveTo(startX,gridY);ctx.lineTo(endX,gridY);ctx.stroke()}
+}
+function drawAxes(){
+  const topLeft=toWorld(0,0),bottomRight=toWorld(innerWidth,innerHeight);
+  ctx.strokeStyle='rgba(200,80,80,0.6)';ctx.lineWidth=2/viewport.zoom;
+  ctx.beginPath();ctx.moveTo(0,topLeft.y);ctx.lineTo(0,bottomRight.y);ctx.stroke();
+  ctx.strokeStyle='rgba(80,200,80,0.6)';ctx.beginPath();ctx.moveTo(topLeft.x,0);ctx.lineTo(bottomRight.x,0);ctx.stroke();
+  ctx.fillStyle='rgba(255,200,100,0.8)';ctx.beginPath();ctx.arc(0,0,4/viewport.zoom,0,Math.PI*2);ctx.fill();
+}
+function drawAllMenus(){for(let index=0;index<menus.length;index++)drawMenu(menus[index])}
+function drawMenu(menu){drawTitle(menu);drawToggleBtn(menu);drawPanel(menu)}
+function drawTitle(menu){
+  const title=menu.title;
+  ctx.save();
+  fillRoundRect(title.worldX,title.worldY,title.width,title.height,title.cornerRadius,title.bgColor,title.borderColor,1/viewport.zoom);
+  setText('600 '+title.fontSize+'px "Segoe UI",system-ui,sans-serif','#ffffff');ctx.fillText(title.text,title.worldX+8,title.worldY+title.height/2);
+  ctx.restore();
+}
+function drawToggleBtn(menu){
+  const button=menu.toggleBtn,size=button.size;
+  ctx.save();
+  fillRoundRect(button.worldX,button.worldY,size,size,button.cornerRadius,button.isOver?'rgba(255,255,255,0.08)':button.bgColor,button.isOver?'rgba(255,255,255,0.25)':button.borderColor,1/viewport.zoom);
+  ctx.strokeStyle=button.isOver?'#ffffff':'#888888';ctx.lineWidth=1.5/viewport.zoom;ctx.lineCap='round';
+  const centerX=button.worldX+size/2,centerY=button.worldY+size/2,padding=size*0.25;
+  if(menu.panel.expanded||menu.panel.currentWidth>10){
+    ctx.beginPath();ctx.moveTo(centerX-padding,centerY-padding);ctx.lineTo(centerX+padding,centerY+padding);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(centerX+padding,centerY-padding);ctx.lineTo(centerX-padding,centerY+padding);ctx.stroke();
+  }else{
+    const lineSpacing=size*0.14;
+    for(let offset=-1;offset<=1;offset++){ctx.beginPath();ctx.moveTo(centerX-padding,centerY+offset*lineSpacing);ctx.lineTo(centerX+padding,centerY+offset*lineSpacing);ctx.stroke()}
+  }
+  ctx.restore();
+}
+function drawPanel(menu){
+  const panel=menu.panel;if(panel.currentWidth<1||panel.currentHeight<1)return;
+  ctx.save();
+  fillRoundRect(panel.worldX,panel.worldY,panel.currentWidth,panel.currentHeight,panel.cornerRadius,panel.bgColor,panel.borderColor,1/viewport.zoom);
+  drawMenuItems(menu,panel.worldX,panel.worldY+12);ctx.restore();
+}
+function drawMenuItems(menu,panelX,startY){
+  const panel=menu.panel;let currentY=startY,itemWidth=panel.currentWidth-24;if(itemWidth<50)return;
+  for(let index=0;index<menu.items.length;index++){
+    const item=menu.items[index],definition=types[item.type];
+    if(definition&&definition.draw)definition.draw(panelX+12,currentY,itemWidth,item,index===menu.hoveredItemIndex,index===menu.pressedItemIndex,index,menu);
+    currentY+=getItemHeight(item)+4;
+  }
+}
+
+function init(){setupEvents();renderLoop()}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

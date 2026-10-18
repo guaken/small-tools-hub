@@ -1,0 +1,2880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bohemian Menu Collection</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Josefin+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg-cream: #f5f0e8;
+  --bg-warm: #ede4d3;
+  --bg-sand: #e8dcc8;
+  --bg-linen: #faf6f0;
+  --accent-terracotta: #c4715a;
+  --accent-ochre: #c4956a;
+  --accent-sage: #7a8b6e;
+  --accent-rust: #a0522d;
+  --accent-mustard: #d4a843;
+  --accent-rose: #b76e79;
+  --text-dark: #3d2b1f;
+  --text-medium: #6b5344;
+  --text-light: #a08b7a;
+  --text-muted: #c4b5a5;
+  --border-warm: rgba(196,113,90,0.25);
+  --border-soft: rgba(196,113,90,0.12);
+  --shadow-soft: rgba(61,43,31,0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes gentlePulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes leafSway { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+
+body {
+  background: var(--bg-cream);
+  color: var(--text-dark);
+  font-family: 'Josefin Sans', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-x: hidden;
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.floral-deco {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.08;
+  font-size: 120px;
+}
+.floral-deco.tl { top: -20px; left: -20px; transform: rotate(-15deg); }
+.floral-deco.tr { top: -20px; right: -20px; transform: rotate(15deg) scaleX(-1); }
+.floral-deco.bl { bottom: -20px; left: -20px; transform: rotate(-165deg); }
+.floral-deco.br { bottom: -20px; right: -20px; transform: rotate(165deg) scaleX(-1); }
+
+.status-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 32px;
+  background: var(--bg-warm);
+  border-bottom: 1px solid var(--border-soft);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; z-index: 1000; font-size: 11px; letter-spacing: 2px;
+  font-family: 'Cormorant Garamond', serif;
+}
+.status-bar .sys-id { color: var(--accent-terracotta); font-weight: 600; }
+.status-bar .sys-time { color: var(--text-light); font-style: italic; }
+.status-bar .sys-status { display: flex; align-items: center; gap: 8px; }
+.status-bar .status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-sage); box-shadow: 0 0 8px rgba(122,139,110,0.4);
+  animation: gentlePulse 3s ease infinite;
+}
+
+.top-nav {
+  position: fixed; top: 32px; left: 0; right: 0; height: 52px;
+  background: var(--bg-linen);
+  border-bottom: 1px solid var(--border-soft);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; z-index: 999;
+}
+.top-nav .logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 700; color: var(--accent-rust);
+  letter-spacing: 3px;
+  display: flex; align-items: center; gap: 8px;
+}
+.top-nav .logo .logo-icon {
+  color: var(--accent-rose); font-size: 14px;
+}
+.top-nav .nav-actions { display: flex; gap: 10px; }
+.nav-btn {
+  width: 38px; height: 38px;
+  border: 1.5px solid var(--border-warm);
+  background: transparent;
+  color: var(--text-medium);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; transition: all 0.3s ease;
+  font-family: 'Josefin Sans', sans-serif;
+}
+.nav-btn:active { transform: scale(0.92); }
+.nav-btn:hover, .nav-btn.active {
+  border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+  background: rgba(196,113,90,0.06);
+}
+
+.main-content { padding-top: 96px; padding-bottom: 90px; min-height: 100vh; position: relative; z-index: 2; }
+.page-section { display: none; padding: 20px; animation: fadeInUp 0.5s ease; }
+.page-section.active { display: block; }
+
+.section-header {
+  margin-bottom: 24px; padding-bottom: 16px;
+  border-bottom: 2px solid var(--border-soft);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-cream); padding: 0 12px; color: var(--accent-ochre); font-size: 12px;
+}
+.section-header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; color: var(--accent-rust); letter-spacing: 3px;
+  margin-bottom: 6px; font-weight: 700;
+}
+.section-header .subtitle {
+  font-size: 12px; color: var(--text-light); letter-spacing: 2px;
+  font-style: italic; font-family: 'Cormorant Garamond', serif;
+}
+
+.info-card {
+  background: var(--bg-linen);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 20px; margin-bottom: 20px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 4px 20px var(--shadow-soft);
+}
+.info-card::before {
+  content: ''; position: absolute; top: 0; left: 20px; right: 20px;
+  height: 3px; background: linear-gradient(90deg, var(--accent-terracotta), var(--accent-ochre), var(--accent-sage));
+  border-radius: 0 0 3px 3px;
+}
+.info-card h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; color: var(--accent-rust); margin-bottom: 10px;
+  letter-spacing: 2px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+}
+.info-card h3 .card-icon {
+  color: var(--accent-ochre); font-size: 12px;
+}
+.info-card p {
+  color: var(--text-medium); font-size: 13px; line-height: 1.9;
+}
+.info-card .tag {
+  display: inline-block; padding: 4px 12px;
+  background: rgba(196,113,90,0.08);
+  border: 1px solid var(--border-warm);
+  border-radius: 20px; font-size: 11px;
+  color: var(--accent-terracotta); margin-right: 8px; margin-top: 10px;
+  font-family: 'Josefin Sans', sans-serif; letter-spacing: 1px;
+}
+
+.drawer-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(61,43,31,0.4); z-index: 2000;
+  opacity: 0; visibility: hidden; transition: all 0.4s ease;
+}
+.drawer-overlay.open { opacity: 1; visibility: visible; }
+.drawer-panel {
+  position: fixed; top: 0; left: 0; width: 300px; max-width: 85vw;
+  height: 100vh; background: var(--bg-linen);
+  border-right: 2px solid var(--border-warm);
+  z-index: 2001; transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  overflow-y: auto; overflow-x: hidden;
+  box-shadow: 4px 0 30px rgba(61,43,31,0.1);
+}
+.drawer-panel.open { transform: translateX(0); }
+.drawer-header {
+  padding: 28px 20px; border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(135deg, rgba(196,113,90,0.06), transparent);
+  text-align: center;
+}
+.drawer-header .drawer-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; color: var(--accent-rust); letter-spacing: 3px;
+  margin-bottom: 6px; font-weight: 700;
+}
+.drawer-header .drawer-meta {
+  font-size: 11px; color: var(--text-light); font-style: italic;
+}
+.drawer-menu-list { list-style: none; padding: 12px 0; }
+.drawer-menu-item { position: relative; }
+.drawer-menu-item > a, .drawer-menu-item > .drawer-item-header {
+  display: flex; align-items: center;
+  padding: 14px 20px; color: var(--text-dark);
+  text-decoration: none; font-size: 14px; cursor: pointer;
+  transition: all 0.25s; border-left: 3px solid transparent;
+  font-family: 'Josefin Sans', sans-serif;
+}
+.drawer-menu-item > a:hover, .drawer-menu-item > .drawer-item-header:hover {
+  background: rgba(196,113,90,0.05);
+  border-left-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+}
+.drawer-menu-item .item-icon {
+  width: 28px; text-align: center; margin-right: 14px;
+  font-size: 18px;
+}
+.drawer-menu-item .item-label { flex: 1; }
+.drawer-menu-item .expand-icon {
+  font-size: 10px; color: var(--text-light); transition: transform 0.3s;
+}
+.drawer-menu-item.expanded .expand-icon { transform: rotate(90deg); }
+.drawer-submenu {
+  list-style: none; max-height: 0; overflow: hidden;
+  transition: max-height 0.35s ease;
+  background: rgba(196,113,90,0.03);
+}
+.drawer-menu-item.expanded > .drawer-submenu { max-height: 600px; }
+.drawer-submenu .drawer-menu-item > a, .drawer-submenu .drawer-menu-item > .drawer-item-header {
+  padding-left: 48px; font-size: 13px; color: var(--text-medium);
+}
+.drawer-submenu .drawer-submenu .drawer-menu-item > a {
+  padding-left: 68px; font-size: 12px; color: var(--text-light);
+}
+.drawer-submenu .drawer-menu-item > a:hover { color: var(--accent-sage); border-left-color: var(--accent-sage); }
+
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
+  background: var(--bg-linen);
+  border-top: 1px solid var(--border-soft);
+  display: flex; justify-content: space-around; align-items: center;
+  z-index: 1000;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -4px 20px var(--shadow-soft);
+}
+.bottom-nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; height: 100%;
+  color: var(--text-light); text-decoration: none;
+  font-size: 10px; letter-spacing: 1px; cursor: pointer;
+  transition: all 0.3s; position: relative;
+  border: none; background: none; font-family: 'Josefin Sans', sans-serif;
+}
+.bottom-nav-item .nav-icon {
+  font-size: 22px; margin-bottom: 3px; transition: all 0.3s;
+}
+.bottom-nav-item.active { color: var(--accent-terracotta); }
+.bottom-nav-item.active .nav-icon {
+  transform: translateY(-3px);
+  filter: drop-shadow(0 2px 4px rgba(196,113,90,0.3));
+}
+.bottom-nav-item.active::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 24px; height: 3px; background: var(--accent-terracotta);
+  border-radius: 0 0 3px 3px;
+}
+
+.fab-container { position: fixed; bottom: 88px; right: 20px; z-index: 1500; }
+.fab-main {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-terracotta), var(--accent-ochre));
+  border: 2px solid var(--bg-linen); color: #fff;
+  font-size: 24px; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(196,113,90,0.3);
+  transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+  position: relative; z-index: 2;
+  font-family: 'Cormorant Garamond', serif;
+}
+.fab-main:active { transform: scale(0.9); }
+.fab-main.open { transform: rotate(45deg); box-shadow: 0 4px 30px rgba(183,110,121,0.4); }
+.fab-menu {
+  position: absolute; bottom: 68px; right: 0;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+  opacity: 0; visibility: hidden; transform: translateY(20px);
+  transition: all 0.3s ease;
+}
+.fab-menu.open { opacity: 1; visibility: visible; transform: translateY(0); }
+.fab-item {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; opacity: 0; transform: translateX(20px);
+  transition: all 0.3s ease;
+}
+.fab-menu.open .fab-item { opacity: 1; transform: translateX(0); }
+.fab-menu.open .fab-item:nth-child(1) { transition-delay: 0.05s; }
+.fab-menu.open .fab-item:nth-child(2) { transition-delay: 0.1s; }
+.fab-menu.open .fab-item:nth-child(3) { transition-delay: 0.15s; }
+.fab-menu.open .fab-item:nth-child(4) { transition-delay: 0.2s; }
+.fab-item-label {
+  background: var(--bg-linen); border: 1px solid var(--border-warm);
+  padding: 6px 14px; border-radius: 20px; font-size: 12px;
+  color: var(--text-dark); white-space: nowrap;
+  box-shadow: 0 2px 10px var(--shadow-soft);
+  font-family: 'Josefin Sans', sans-serif;
+}
+.fab-item-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1.5px solid var(--border-warm);
+  background: var(--bg-linen); color: var(--text-medium);
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s;
+  box-shadow: 0 2px 10px var(--shadow-soft);
+}
+.fab-item-btn:hover {
+  border-color: var(--accent-terracotta); color: var(--accent-terracotta);
+  box-shadow: 0 0 15px rgba(196,113,90,0.15);
+}
+
+.accordion-group {
+  border: 1px solid var(--border-soft); border-radius: 16px;
+  overflow: hidden; margin-bottom: 16px;
+  box-shadow: 0 2px 12px var(--shadow-soft);
+}
+.accordion-item { border-bottom: 1px solid var(--border-soft); }
+.accordion-item:last-child { border-bottom: none; }
+.accordion-header {
+  display: flex; align-items: center;
+  padding: 16px 18px; background: var(--bg-linen);
+  cursor: pointer; transition: all 0.25s; user-select: none;
+}
+.accordion-header:hover { background: rgba(196,113,90,0.04); }
+.accordion-header .acc-icon { width: 28px; font-size: 18px; margin-right: 12px; }
+.accordion-header .acc-title { flex: 1; font-size: 14px; color: var(--text-dark); font-family: 'Josefin Sans', sans-serif; }
+.accordion-header .acc-badge {
+  background: rgba(183,110,121,0.12); color: var(--accent-rose);
+  padding: 3px 10px; border-radius: 12px; font-size: 11px;
+  margin-right: 12px; font-family: 'Josefin Sans', sans-serif;
+}
+.accordion-header .acc-arrow { font-size: 12px; color: var(--text-light); transition: transform 0.3s; }
+.accordion-item.open .acc-arrow { transform: rotate(180deg); }
+.accordion-content {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.4s ease, padding 0.4s ease;
+  background: rgba(196,113,90,0.02);
+}
+.accordion-item.open .accordion-content { max-height: 400px; padding: 14px 18px; }
+.accordion-inner-list { list-style: none; }
+.accordion-inner-list li {
+  padding: 12px 14px; border-radius: 10px; margin-bottom: 6px;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text-medium);
+  font-family: 'Josefin Sans', sans-serif;
+}
+.accordion-inner-list li:hover {
+  background: rgba(196,113,90,0.06); color: var(--accent-terracotta);
+}
+.accordion-inner-list li .inner-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted);
+}
+.accordion-inner-list li:hover .inner-dot {
+  background: var(--accent-terracotta); box-shadow: 0 0 6px rgba(196,113,90,0.3);
+}
+.accordion-nested { margin-left: 18px; margin-top: 10px; border-left: 2px solid var(--border-soft); padding-left: 14px; }
+.accordion-nested .accordion-header { padding: 10px 14px; background: transparent; font-size: 13px; }
+.accordion-nested .accordion-header .acc-title { font-size: 13px; color: var(--text-medium); }
+
+.tab-container { margin-bottom: 20px; }
+.tab-header {
+  display: flex; gap: 6px; margin-bottom: 18px;
+  overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+  padding-bottom: 4px;
+}
+.tab-header::-webkit-scrollbar { display: none; }
+.tab-btn {
+  padding: 10px 20px; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 24px;
+  color: var(--text-medium); font-size: 13px; cursor: pointer;
+  transition: all 0.25s; white-space: nowrap;
+  font-family: 'Josefin Sans', sans-serif; letter-spacing: 1px;
+}
+.tab-btn.active {
+  background: rgba(196,113,90,0.1); border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta); box-shadow: 0 2px 12px rgba(196,113,90,0.1);
+}
+.tab-btn:active { transform: scale(0.95); }
+.tab-panel { display: none; animation: fadeInUp 0.35s ease; }
+.tab-panel.active { display: block; }
+.tab-vertical { display: flex; gap: 14px; }
+.tab-header-vertical {
+  display: flex; flex-direction: column; gap: 6px; min-width: 110px;
+}
+.tab-btn-v {
+  padding: 14px 16px; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 12px;
+  color: var(--text-medium); font-size: 12px; cursor: pointer;
+  transition: all 0.25s; text-align: left;
+  font-family: 'Josefin Sans', sans-serif; position: relative;
+}
+.tab-btn-v.active {
+  background: rgba(196,113,90,0.1); border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+}
+.tab-btn-v.active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--accent-terracotta); border-radius: 0 3px 3px 0;
+}
+
+.segmented-control {
+  display: flex; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 24px;
+  padding: 4px; margin-bottom: 18px;
+}
+.segment-btn {
+  flex: 1; padding: 10px; background: transparent; border: none;
+  color: var(--text-medium); font-size: 13px; cursor: pointer;
+  transition: all 0.3s; border-radius: 20px;
+  font-family: 'Josefin Sans', sans-serif; position: relative;
+}
+.segment-btn.active {
+  background: rgba(196,113,90,0.12); color: var(--accent-terracotta);
+  box-shadow: 0 2px 10px rgba(196,113,90,0.08);
+}
+.segment-btn:active { transform: scale(0.95); }
+
+.dropdown-wrapper { position: relative; margin-bottom: 18px; }
+.dropdown-trigger {
+  width: 100%; padding: 14px 18px; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 12px;
+  color: var(--text-dark); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: 'Josefin Sans', sans-serif; transition: all 0.2s;
+}
+.dropdown-trigger:hover { border-color: var(--border-warm); }
+.dropdown-trigger .trigger-arrow { transition: transform 0.3s; color: var(--text-light); }
+.dropdown-wrapper.open .trigger-arrow { transform: rotate(180deg); }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--bg-linen); border: 1.5px solid var(--border-soft);
+  border-radius: 12px; max-height: 0; overflow: hidden; opacity: 0;
+  transition: all 0.3s ease; z-index: 100;
+  box-shadow: 0 10px 40px rgba(61,43,31,0.1);
+}
+.dropdown-wrapper.open .dropdown-menu { max-height: 320px; opacity: 1; overflow-y: auto; }
+.dropdown-item {
+  padding: 12px 18px; cursor: pointer; transition: all 0.15s;
+  font-size: 13px; color: var(--text-medium);
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border-soft);
+  font-family: 'Josefin Sans', sans-serif;
+}
+.dropdown-item:last-child { border-bottom: none; }
+.dropdown-item:hover { background: rgba(196,113,90,0.05); color: var(--accent-terracotta); }
+.dropdown-item.selected { background: rgba(196,113,90,0.08); color: var(--accent-terracotta); }
+.cascade-dropdown { display: flex; gap: 10px; margin-bottom: 18px; }
+.cascade-dropdown .dropdown-wrapper { flex: 1; margin-bottom: 0; }
+
+.grid-menu {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  margin-bottom: 20px;
+}
+.grid-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 18px 10px; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 16px;
+  cursor: pointer; transition: all 0.3s;
+  text-decoration: none; color: var(--text-medium);
+  box-shadow: 0 2px 10px var(--shadow-soft);
+}
+.grid-item:hover, .grid-item:active {
+  border-color: var(--accent-terracotta);
+  background: rgba(196,113,90,0.04);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(196,113,90,0.1);
+}
+.grid-item .grid-icon {
+  width: 44px; height: 44px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 10px;
+  background: rgba(196,113,90,0.06); border: 1.5px solid var(--border-soft);
+}
+.grid-item:hover .grid-icon {
+  background: rgba(196,113,90,0.1);
+  box-shadow: 0 0 15px rgba(196,113,90,0.1);
+}
+.grid-item .grid-label { font-size: 11px; text-align: center; font-family: 'Josefin Sans', sans-serif; letter-spacing: 0.5px; }
+
+.list-menu {
+  border: 1.5px solid var(--border-soft); border-radius: 16px;
+  overflow: hidden; margin-bottom: 20px;
+  box-shadow: 0 2px 12px var(--shadow-soft);
+}
+.list-item {
+  display: flex; align-items: center;
+  padding: 16px 18px; background: var(--bg-linen);
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer; transition: all 0.2s;
+  text-decoration: none; color: var(--text-dark);
+}
+.list-item:last-child { border-bottom: none; }
+.list-item:hover { background: rgba(196,113,90,0.03); }
+.list-item .list-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: rgba(196,113,90,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; margin-right: 14px;
+  border: 1.5px solid var(--border-soft);
+}
+.list-item .list-content { flex: 1; }
+.list-item .list-title { font-size: 14px; margin-bottom: 3px; font-family: 'Josefin Sans', sans-serif; }
+.list-item .list-desc { font-size: 12px; color: var(--text-light); }
+.list-item .list-arrow { color: var(--text-light); font-size: 14px; }
+.list-group-title {
+  padding: 10px 18px; font-size: 11px; color: var(--accent-rose);
+  letter-spacing: 2px; text-transform: uppercase;
+  background: rgba(183,110,121,0.05);
+  border-bottom: 1px solid var(--border-soft);
+  font-family: 'Cormorant Garamond', serif; font-weight: 600;
+}
+
+.stepper {
+  display: flex; align-items: center; margin-bottom: 24px;
+  padding: 18px; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 16px;
+  overflow-x: auto; box-shadow: 0 2px 12px var(--shadow-soft);
+}
+.step {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 64px; position: relative;
+}
+.step-circle {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--border-soft);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--text-light); background: var(--bg-cream);
+  transition: all 0.3s; z-index: 1; font-family: 'Cormorant Garamond', serif; font-weight: 600;
+}
+.step.active .step-circle {
+  border-color: var(--accent-terracotta); color: var(--accent-terracotta);
+  box-shadow: 0 0 12px rgba(196,113,90,0.2);
+}
+.step.completed .step-circle {
+  border-color: var(--accent-sage); background: rgba(122,139,110,0.1);
+  color: var(--accent-sage);
+}
+.step-label { font-size: 11px; color: var(--text-light); margin-top: 8px; white-space: nowrap; font-family: 'Josefin Sans', sans-serif; }
+.step.active .step-label { color: var(--accent-terracotta); }
+.step.completed .step-label { color: var(--accent-sage); }
+.step-connector {
+  flex: 1; min-width: 30px; height: 2px; background: var(--border-soft);
+  margin: 0 6px; margin-bottom: 24px; position: relative;
+}
+.step-connector.completed { background: linear-gradient(90deg, var(--accent-sage), var(--accent-sage)); }
+
+.breadcrumb {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 18px; padding: 12px 16px;
+  background: var(--bg-linen); border: 1.5px solid var(--border-soft);
+  border-radius: 12px; box-shadow: 0 2px 10px var(--shadow-soft);
+}
+.breadcrumb-item {
+  font-size: 12px; color: var(--text-light); cursor: pointer;
+  transition: color 0.2s; font-family: 'Josefin Sans', sans-serif;
+}
+.breadcrumb-item:hover { color: var(--accent-terracotta); }
+.breadcrumb-item.active { color: var(--accent-rust); font-weight: 600; }
+.breadcrumb-separator { color: var(--text-muted); font-size: 11px; }
+
+.context-trigger-area {
+  padding: 44px; background: var(--bg-linen);
+  border: 2px dashed var(--border-warm); border-radius: 16px;
+  text-align: center; color: var(--text-light); font-size: 13px;
+  margin-bottom: 18px; cursor: context-menu; user-select: none;
+  transition: all 0.2s;
+}
+.context-trigger-area:hover { border-color: var(--accent-ochre); background: rgba(196,149,106,0.03); }
+.context-menu {
+  position: fixed; background: var(--bg-linen);
+  border: 1.5px solid var(--border-warm); border-radius: 12px;
+  min-width: 190px; box-shadow: 0 10px 40px rgba(61,43,31,0.15);
+  z-index: 3000; opacity: 0; visibility: hidden;
+  transform: scale(0.95); transition: all 0.15s ease;
+  overflow: hidden;
+}
+.context-menu.open { opacity: 1; visibility: visible; transform: scale(1); }
+.context-item {
+  padding: 11px 16px; font-size: 13px; color: var(--text-medium);
+  cursor: pointer; display: flex; align-items: center; gap: 10px;
+  transition: all 0.15s; font-family: 'Josefin Sans', sans-serif;
+}
+.context-item:hover { background: rgba(196,113,90,0.06); color: var(--accent-terracotta); }
+.context-divider { height: 1px; background: var(--border-soft); margin: 4px 0; }
+
+.search-bar { position: relative; margin-bottom: 18px; }
+.search-bar input {
+  width: 100%; padding: 14px 18px 14px 44px;
+  background: var(--bg-linen); border: 1.5px solid var(--border-soft);
+  border-radius: 24px; color: var(--text-dark); font-size: 14px;
+  font-family: 'Josefin Sans', sans-serif; outline: none; transition: all 0.2s;
+}
+.search-bar input:focus { border-color: var(--accent-terracotta); box-shadow: 0 0 15px rgba(196,113,90,0.08); }
+.search-bar input::placeholder { color: var(--text-muted); }
+.search-bar .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 15px; }
+.filter-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.filter-chip {
+  padding: 7px 16px; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 20px;
+  font-size: 12px; color: var(--text-medium); cursor: pointer;
+  transition: all 0.2s; font-family: 'Josefin Sans', sans-serif;
+}
+.filter-chip.active {
+  background: rgba(196,113,90,0.1); border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+}
+
+.tree-menu {
+  border: 1.5px solid var(--border-soft); border-radius: 16px;
+  padding: 14px; background: var(--bg-linen); margin-bottom: 18px;
+  box-shadow: 0 2px 12px var(--shadow-soft);
+}
+.tree-node { position: relative; }
+.tree-node-header {
+  display: flex; align-items: center;
+  padding: 9px 6px; cursor: pointer; transition: all 0.2s; border-radius: 8px;
+}
+.tree-node-header:hover { background: rgba(196,113,90,0.04); }
+.tree-toggle { width: 22px; text-align: center; font-size: 10px; color: var(--text-light); transition: transform 0.2s; cursor: pointer; }
+.tree-toggle.open { transform: rotate(90deg); }
+.tree-toggle.leaf { visibility: hidden; }
+.tree-icon { margin: 0 8px; font-size: 15px; }
+.tree-label { font-size: 13px; color: var(--text-medium); flex: 1; font-family: 'Josefin Sans', sans-serif; }
+.tree-node-header:hover .tree-label { color: var(--accent-terracotta); }
+.tree-children {
+  margin-left: 22px; border-left: 2px solid var(--border-soft);
+  padding-left: 10px; max-height: 0; overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.tree-node.open > .tree-children { max-height: 600px; }
+
+.swipe-item-wrapper { position: relative; overflow: hidden; margin-bottom: 10px; border-radius: 12px; }
+.swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; z-index: 1; }
+.swipe-action { width: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 10px; cursor: pointer; font-family: 'Josefin Sans', sans-serif; }
+.swipe-action.edit { background: var(--accent-mustard); }
+.swipe-action.delete { background: var(--accent-rose); }
+.swipe-action.more { background: var(--accent-ochre); }
+.swipe-content {
+  position: relative; z-index: 2; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 12px;
+  padding: 16px 18px; transition: transform 0.3s ease; cursor: grab;
+  box-shadow: 0 2px 8px var(--shadow-soft);
+}
+.swipe-content.swiped { transform: translateX(-144px); }
+.swipe-hint {
+  text-align: center; font-size: 12px; color: var(--text-light);
+  margin-bottom: 14px; padding: 10px;
+  background: rgba(196,113,90,0.03); border-radius: 8px;
+  border: 1.5px dashed var(--border-soft);
+}
+
+.sidebar-expand-demo {
+  display: flex; height: 220px;
+  border: 1.5px solid var(--border-soft); border-radius: 16px;
+  overflow: hidden; margin-bottom: 18px;
+  box-shadow: 0 2px 12px var(--shadow-soft);
+}
+.sidebar-mini {
+  width: 64px; background: var(--bg-linen);
+  border-right: 1.5px solid var(--border-soft);
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 14px; gap: 10px; transition: width 0.35s ease;
+}
+.sidebar-mini.expanded { width: 190px; }
+.sidebar-mini-item {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: var(--text-light); cursor: pointer;
+  transition: all 0.25s; position: relative;
+}
+.sidebar-mini-item:hover, .sidebar-mini-item.active { background: rgba(196,113,90,0.08); color: var(--accent-terracotta); }
+.sidebar-mini-item .sb-label {
+  position: absolute; left: 56px; white-space: nowrap;
+  font-size: 13px; color: var(--text-medium); opacity: 0;
+  transition: opacity 0.25s; pointer-events: none;
+  font-family: 'Josefin Sans', sans-serif;
+}
+.sidebar-mini.expanded .sidebar-mini-item { width: calc(100% - 20px); justify-content: flex-start; padding-left: 14px; gap: 12px; }
+.sidebar-mini.expanded .sidebar-mini-item .sb-label { position: static; opacity: 1; pointer-events: auto; }
+.sidebar-content-area { flex: 1; padding: 18px; background: var(--bg-warm); }
+
+.hamburger-demo {
+  display: flex; gap: 28px; justify-content: center;
+  padding: 28px; background: var(--bg-linen);
+  border: 1.5px solid var(--border-soft); border-radius: 16px;
+  margin-bottom: 18px; box-shadow: 0 2px 12px var(--shadow-soft);
+}
+.hamburger { width: 32px; height: 24px; position: relative; cursor: pointer; }
+.hamburger span { display: block; position: absolute; height: 2.5px; width: 100%; background: var(--accent-terracotta); border-radius: 2px; transition: all 0.3s ease; left: 0; }
+.hamburger span:nth-child(1) { top: 0; }
+.hamburger span:nth-child(2) { top: 11px; }
+.hamburger span:nth-child(3) { top: 22px; }
+.hamburger.active span:nth-child(1) { top: 11px; transform: rotate(45deg); }
+.hamburger.active span:nth-child(2) { opacity: 0; transform: translateX(-20px); }
+.hamburger.active span:nth-child(3) { top: 11px; transform: rotate(-45deg); }
+.hamburger.style2 span { background: var(--accent-rose); }
+.hamburger.style2.active span:nth-child(1) { top: 11px; width: 50%; left: 0; transform: rotate(-45deg); }
+.hamburger.style2.active span:nth-child(3) { top: 11px; width: 50%; left: 50%; transform: rotate(45deg); }
+.hamburger.style3 span { background: var(--accent-sage); }
+.hamburger.style3.active span:nth-child(1) { top: 11px; transform: rotate(135deg); }
+.hamburger.style3.active span:nth-child(2) { opacity: 1; transform: rotate(45deg); }
+.hamburger.style3.active span:nth-child(3) { opacity: 0; }
+
+.fullscreen-menu {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg-cream); z-index: 2500;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; transition: all 0.45s ease;
+}
+.fullscreen-menu.open { opacity: 1; visibility: visible; }
+.fullscreen-menu .fs-close {
+  position: absolute; top: 24px; right: 24px;
+  width: 48px; height: 48px;
+  border: 1.5px solid var(--border-warm); border-radius: 50%;
+  background: var(--bg-linen); color: var(--text-dark);
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+}
+.fs-menu-list { list-style: none; text-align: center; }
+.fs-menu-item { margin: 18px 0; opacity: 0; transform: translateY(30px); transition: all 0.45s ease; }
+.fullscreen-menu.open .fs-menu-item { opacity: 1; transform: translateY(0); }
+.fullscreen-menu.open .fs-menu-item:nth-child(1) { transition-delay: 0.1s; }
+.fullscreen-menu.open .fs-menu-item:nth-child(2) { transition-delay: 0.15s; }
+.fullscreen-menu.open .fs-menu-item:nth-child(3) { transition-delay: 0.2s; }
+.fullscreen-menu.open .fs-menu-item:nth-child(4) { transition-delay: 0.25s; }
+.fullscreen-menu.open .fs-menu-item:nth-child(5) { transition-delay: 0.3s; }
+.fullscreen-menu.open .fs-menu-item:nth-child(6) { transition-delay: 0.35s; }
+.fs-menu-item a {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; color: var(--text-dark); text-decoration: none;
+  letter-spacing: 4px; transition: all 0.3s; position: relative;
+}
+.fs-menu-item a:hover { color: var(--accent-terracotta); }
+.fs-menu-item a::after {
+  content: ''; position: absolute; bottom: -4px; left: 50%;
+  width: 0; height: 2px; background: var(--accent-terracotta);
+  transition: all 0.3s; transform: translateX(-50%);
+}
+.fs-menu-item a:hover::after { width: 100%; }
+
+.masonry-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  margin-bottom: 18px;
+}
+.masonry-item {
+  background: var(--bg-linen); border: 1.5px solid var(--border-soft);
+  border-radius: 16px; padding: 18px; cursor: pointer;
+  transition: all 0.35s; position: relative; overflow: hidden;
+  box-shadow: 0 2px 10px var(--shadow-soft);
+}
+.masonry-item:hover {
+  border-color: var(--accent-terracotta);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(196,113,90,0.1);
+}
+.masonry-item.tall { grid-row: span 2; }
+.masonry-item .ms-icon { font-size: 30px; margin-bottom: 12px; }
+.masonry-item .ms-title {
+  font-size: 14px; color: var(--text-dark); margin-bottom: 6px;
+  font-family: 'Josefin Sans', sans-serif;
+}
+.masonry-item .ms-desc { font-size: 12px; color: var(--text-light); }
+.masonry-item .ms-stat {
+  position: absolute; bottom: 14px; right: 14px;
+  font-size: 22px; font-weight: bold; color: var(--accent-terracotta);
+  opacity: 0.25; font-family: 'Cormorant Garamond', serif;
+}
+
+.radial-menu-container { position: relative; width: 220px; height: 220px; margin: 24px auto; }
+.radial-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-terracotta), var(--accent-ochre));
+  border: 2px solid var(--bg-linen); color: #fff;
+  font-size: 22px; cursor: pointer; z-index: 10;
+  box-shadow: 0 4px 20px rgba(196,113,90,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+}
+.radial-item {
+  position: absolute; top: 50%; left: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--bg-linen); border: 1.5px solid var(--border-warm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--text-medium); cursor: pointer;
+  transition: all 0.45s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  opacity: 0; transform: translate(-50%, -50%) scale(0);
+  box-shadow: 0 2px 10px var(--shadow-soft);
+}
+.radial-menu-container.open .radial-item { opacity: 1; }
+
+.detail-panel {
+  position: fixed; top: 84px; left: 0; right: 0; bottom: 68px;
+  background: var(--bg-cream); z-index: 500;
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  overflow-y: auto; padding: 20px;
+}
+.detail-panel.open { transform: translateX(0); }
+.detail-panel .dp-header {
+  display: flex; align-items: center;
+  margin-bottom: 24px; padding-bottom: 14px;
+  border-bottom: 1.5px solid var(--border-soft);
+}
+.detail-panel .dp-back {
+  width: 40px; height: 40px;
+  border: 1.5px solid var(--border-warm); border-radius: 12px;
+  background: var(--bg-linen); color: var(--text-dark);
+  font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 14px;
+}
+.detail-panel .dp-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; color: var(--accent-rust); letter-spacing: 2px;
+}
+.detail-panel .dp-content {
+  font-size: 13px; line-height: 2; color: var(--text-medium);
+}
+.detail-panel .dp-content h4 {
+  color: var(--accent-sage); font-size: 14px; margin: 18px 0 10px;
+  letter-spacing: 1px; font-family: 'Cormorant Garamond', serif; font-weight: 600;
+}
+.detail-panel .dp-content code {
+  background: rgba(196,113,90,0.06); padding: 3px 8px;
+  border-radius: 4px; color: var(--accent-terracotta); font-size: 12px;
+}
+
+.param-table {
+  width: 100%; border-collapse: collapse; margin: 14px 0;
+  font-size: 12px; font-family: 'Josefin Sans', sans-serif;
+}
+.param-table th, .param-table td {
+  padding: 10px 12px; text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+}
+.param-table th {
+  color: var(--accent-rust); font-weight: 600;
+  letter-spacing: 1px; font-size: 10px; text-transform: uppercase;
+  font-family: 'Cormorant Garamond', serif;
+}
+.param-table td { color: var(--text-medium); }
+
+.toast {
+  position: fixed; bottom: 88px; left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--bg-linen); border: 1.5px solid var(--border-warm);
+  border-radius: 24px; padding: 14px 24px;
+  font-size: 13px; color: var(--accent-rust); z-index: 4000;
+  opacity: 0; transition: all 0.35s ease;
+  box-shadow: 0 4px 20px rgba(61,43,31,0.1);
+  white-space: nowrap; font-family: 'Josefin Sans', sans-serif;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-warm); border-radius: 3px; }
+
+@media (min-width: 768px) {
+  .main-content { max-width: 520px; margin: 0 auto; }
+  .drawer-panel { width: 340px; }
+}
+::selection { background: rgba(196,113,90,0.15); color: var(--accent-rust); }
+
+/* Lucide icon sizing */
+.lucide { width: 1em; height: 1em; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+</style>
+</head>
+<body>
+
+<div class="floral-deco tl"><i data-lucide="flower-2" style="width:120px;height:120px;opacity:0.08;"></i></div>
+<div class="floral-deco tr"><i data-lucide="flower-2" style="width:120px;height:120px;opacity:0.08;transform:scaleX(-1);"></i></div>
+<div class="floral-deco bl"><i data-lucide="flower-2" style="width:120px;height:120px;opacity:0.08;transform:rotate(180deg);"></i></div>
+<div class="floral-deco br"><i data-lucide="flower-2" style="width:120px;height:120px;opacity:0.08;transform:rotate(180deg) scaleX(-1);"></i></div>
+
+<div class="status-bar">
+  <span class="sys-id">Bohemian Collection</span>
+  <span class="sys-status"><span class="status-dot"></span>Online</span>
+  <span class="sys-time" id="sysTime">00:00:00</span>
+</div>
+
+<div class="top-nav">
+  <div class="logo">
+    <i data-lucide="flower-2" class="logo-icon" style="width:14px;height:14px;"></i>
+    MENU_ARCHIVE
+  </div>
+  <div class="nav-actions">
+    <button class="nav-btn" id="btnDrawer"><i data-lucide="menu" style="width:18px;height:18px;"></i></button>
+    <button class="nav-btn" id="btnFullscreen"><i data-lucide="maximize-2" style="width:18px;height:18px;"></i></button>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer-panel" id="drawerPanel">
+  <div class="drawer-header">
+    <div class="drawer-title">Navigation</div>
+    <div class="drawer-meta">20 Beautiful Modules</div>
+  </div>
+  <ul class="drawer-menu-list" id="drawerMenuList"></ul>
+</div>
+
+<div class="fullscreen-menu" id="fullscreenMenu">
+  <button class="fs-close" id="fsClose"><i data-lucide="x" style="width:20px;height:20px;"></i></button>
+  <ul class="fs-menu-list" id="fsMenuList"></ul>
+</div>
+
+<div class="main-content" id="mainContent">
+
+<!-- ====== HOME PAGE ====== -->
+<div class="page-section active" id="page-home">
+  <div class="section-header">
+    <h1>Archive Overview</h1>
+    <div class="subtitle">Mobile Menu Systems &middot; 20 Interaction Patterns</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>System Brief</h3>
+    <p>本档案收录了移动端网页中常用的20种菜单交互模式。每个模块均包含完整的交互演示、技术实现说明与最佳实践建议。所有功能均为纯前端实现，无需后端依赖。</p>
+    <span class="tag">CSS3</span>
+    <span class="tag">Vanilla JS</span>
+    <span class="tag">Mobile First</span>
+    <span class="tag">Accessibility</span>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="list" class="card-icon" style="width:12px;height:12px;"></i>Module Index</h3>
+    <p>点击下方底部导航栏切换不同模块。每个模块独立展示一种菜单类型，包含实时交互演示与详细技术文档。</p>
+  </div>
+  <div style="margin-bottom:10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Quick Access &middot;</div>
+  <div class="grid-menu" id="homeGrid">
+    <div class="grid-item" data-page="drawer">
+      <div class="grid-icon"><i data-lucide="folder-open" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">抽屉</div>
+    </div>
+    <div class="grid-item" data-page="accordion">
+      <div class="grid-icon"><i data-lucide="clipboard-list" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">折叠</div>
+    </div>
+    <div class="grid-item" data-page="tabs">
+      <div class="grid-icon"><i data-lucide="file-text" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">标签</div>
+    </div>
+    <div class="grid-item" data-page="fab">
+      <div class="grid-icon"><i data-lucide="plus" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">悬浮</div>
+    </div>
+    <div class="grid-item" data-page="dropdown">
+      <div class="grid-icon"><i data-lucide="chevron-down-circle" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">下拉</div>
+    </div>
+    <div class="grid-item" data-page="tree">
+      <div class="grid-icon"><i data-lucide="git-branch" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">树形</div>
+    </div>
+    <div class="grid-item" data-page="swipe">
+      <div class="grid-icon"><i data-lucide="hand" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">滑动</div>
+    </div>
+    <div class="grid-item" data-page="stepper">
+      <div class="grid-icon"><i data-lucide="list-ordered" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">步骤</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== DRAWER PAGE ====== -->
+<div class="page-section" id="page-drawer">
+  <div class="section-header">
+    <h1>Drawer Navigation</h1>
+    <div class="subtitle">Slide-Out Panel &middot; Side Menu Pattern</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>抽屉菜单从屏幕边缘滑出，覆盖主内容区域。支持多级嵌套展开，手势滑动关闭。适用于导航层级较深、功能模块较多的应用场景。</p>
+    <span class="tag">手势支持</span>
+    <span class="tag">多级嵌套</span>
+    <span class="tag">遮罩层</span>
+  </div>
+  <button class="nav-btn" id="btnOpenDrawer" style="width:100%;padding:16px;margin-bottom:18px;font-size:14px;justify-content:center;gap:10px;border-radius:12px;">
+    <i data-lucide="menu" style="width:18px;height:18px;"></i> 打开抽屉菜单演示
+  </button>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 结构层</h4>
+      <p>由遮罩层(Overlay) + 面板(Panel)组成。遮罩层负责捕获点击关闭事件，面板承载菜单内容。</p>
+      <h4>2. 动画原理</h4>
+      <p>使用 transform: translateX() 实现硬件加速滑动，配合 cubic-bezier 缓动函数提供自然的手感。</p>
+      <h4>3. 多级展开</h4>
+      <p>通过 max-height 过渡实现子菜单的平滑展开/收起，避免使用 display:none 导致的动画中断。</p>
+      <h4>4. 手势关闭</h4>
+      <p>监听 touchstart / touchmove / touchend 事件，计算滑动距离与速度，超过阈值时触发关闭。</p>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="sliders" class="card-icon" style="width:12px;height:12px;"></i>参数配置</h3>
+    <table class="param-table">
+      <tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
+      <tr><td>width</td><td>String</td><td>280px</td><td>面板宽度</td></tr>
+      <tr><td>position</td><td>String</td><td>left</td><td>滑出方向</td></tr>
+      <tr><td>duration</td><td>Number</td><td>350</td><td>动画时长(ms)</td></tr>
+      <tr><td>nested</td><td>Boolean</td><td>true</td><td>是否支持多级</td></tr>
+      <tr><td>swipeClose</td><td>Boolean</td><td>true</td><td>手势关闭</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ====== ACCORDION PAGE ====== -->
+<div class="page-section" id="page-accordion">
+  <div class="section-header">
+    <h1>Accordion Menu</h1>
+    <div class="subtitle">Collapsible Panels &middot; Expand/Collapse Pattern</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>手风琴菜单通过点击标题展开/收起内容区域。支持单开模式(一次只展开一项)和多开模式，可无限层级嵌套。</p>
+    <span class="tag">单开/多开</span>
+    <span class="tag">无限嵌套</span>
+    <span class="tag">平滑过渡</span>
+  </div>
+  <div class="accordion-group" id="accordionDemo">
+    <div class="accordion-item open">
+      <div class="accordion-header" data-accordion>
+        <span class="acc-icon"><i data-lucide="bar-chart-3" style="width:18px;height:18px;"></i></span>
+        <span class="acc-title">数据面板</span>
+        <span class="acc-badge">3</span>
+        <span class="acc-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+      </div>
+      <div class="accordion-content">
+        <ul class="accordion-inner-list">
+          <li data-toast="点击: 实时数据流"><span class="inner-dot"></span>实时数据流</li>
+          <li data-toast="点击: 历史记录"><span class="inner-dot"></span>历史记录</li>
+          <li data-toast="点击: 数据导出"><span class="inner-dot"></span>数据导出</li>
+        </ul>
+        <div class="accordion-nested">
+          <div class="accordion-item">
+            <div class="accordion-header" data-accordion>
+              <span class="acc-title">高级设置</span>
+              <span class="acc-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+            </div>
+            <div class="accordion-content">
+              <ul class="accordion-inner-list">
+                <li data-toast="点击: 过滤规则"><span class="inner-dot"></span>过滤规则</li>
+                <li data-toast="点击: 聚合配置"><span class="inner-dot"></span>聚合配置</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <div class="accordion-header" data-accordion>
+        <span class="acc-icon"><i data-lucide="settings" style="width:18px;height:18px;"></i></span>
+        <span class="acc-title">系统配置</span>
+        <span class="acc-badge">5</span>
+        <span class="acc-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+      </div>
+      <div class="accordion-content">
+        <ul class="accordion-inner-list">
+          <li data-toast="点击: 网络设置"><span class="inner-dot"></span>网络设置</li>
+          <li data-toast="点击: 安全策略"><span class="inner-dot"></span>安全策略</li>
+          <li data-toast="点击: 存储管理"><span class="inner-dot"></span>存储管理</li>
+          <li data-toast="点击: 日志级别"><span class="inner-dot"></span>日志级别</li>
+          <li data-toast="点击: 备份恢复"><span class="inner-dot"></span>备份恢复</li>
+        </ul>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <div class="accordion-header" data-accordion>
+        <span class="acc-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></span>
+        <span class="acc-title">用户管理</span>
+        <span class="acc-badge">4</span>
+        <span class="acc-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+      </div>
+      <div class="accordion-content">
+        <ul class="accordion-inner-list">
+          <li data-toast="点击: 用户列表"><span class="inner-dot"></span>用户列表</li>
+          <li data-toast="点击: 权限分配"><span class="inner-dot"></span>权限分配</li>
+          <li data-toast="点击: 角色定义"><span class="inner-dot"></span>角色定义</li>
+          <li data-toast="点击: 审计日志"><span class="inner-dot"></span>审计日志</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 高度动画</h4>
+      <p>使用 max-height 从 0 过渡到具体数值。由于无法预知内容高度，通常设置一个足够大的上限值(如 500px)，配合 overflow:hidden 实现裁剪效果。</p>
+      <h4>2. 单开模式实现</h4>
+      <p>展开某一项时，遍历同级所有项并强制收起。通过 classList.remove('open') 配合 CSS 过渡实现。</p>
+      <h4>3. 嵌套层级</h4>
+      <p>递归结构：每个 AccordionItem 内部可包含子 AccordionGroup。通过事件委托或独立事件绑定处理点击。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TABS PAGE ====== -->
+<div class="page-section" id="page-tabs">
+  <div class="section-header">
+    <h1>Tab Navigation</h1>
+    <div class="subtitle">Horizontal / Vertical Tabs &middot; Content Switching</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>标签页将内容组织为多个面板，通过标签切换显示。支持水平排列(顶部/底部)和垂直排列(左侧/右侧)，适用于内容分类展示场景。</p>
+    <span class="tag">水平/垂直</span>
+    <span class="tag">可滚动</span>
+    <span class="tag">懒加载</span>
+  </div>
+  <div style="margin-bottom:10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Horizontal Tabs &middot;</div>
+  <div class="tab-container">
+    <div class="tab-header" id="tabHeaderH">
+      <button class="tab-btn active" data-tab="tab1">概览</button>
+      <button class="tab-btn" data-tab="tab2">详情</button>
+      <button class="tab-btn" data-tab="tab3">配置</button>
+      <button class="tab-btn" data-tab="tab4">日志</button>
+      <button class="tab-btn" data-tab="tab5">关于</button>
+    </div>
+    <div class="tab-content">
+      <div class="tab-panel active" id="tab1">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>面板: 概览</h3>
+          <p>这是标签页的第一个面板。标签页通过控制 display 属性切换内容显示，配合淡入动画提供流畅的视觉反馈。</p>
+          <div style="margin-top:14px;padding:14px;background:rgba(196,113,90,0.03);border-radius:10px;border:1.5px dashed var(--border-soft);">
+            <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;font-family:'Cormorant Garamond',serif;font-style:italic;">Demo Data &middot;</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--text-medium);">系统状态</span><span style="color:var(--accent-sage);">正常运行</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--text-medium);">响应时间</span><span style="color:var(--accent-terracotta);">24ms</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-medium);">在线用户</span><span style="color:var(--accent-mustard);">1,247</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab2">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>面板: 详情</h3>
+          <p>详细数据展示面板。标签页组件可配置为懒加载模式：仅在首次切换到该标签时才渲染内容，优化初始加载性能。</p>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab3">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>面板: 配置</h3>
+          <p>配置参数面板。支持标签数量过多时的横向滚动，通过 overflow-x: auto 与隐藏滚动条样式实现。</p>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab4">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>面板: 日志</h3>
+          <p>系统日志查看面板。每个标签面板独立维护状态，切换时不会丢失已输入的数据或滚动位置。</p>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab5">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>面板: 关于</h3>
+          <p>关于信息面板。标签页底部可添加指示器(Indicator)动画，跟随当前选中标签滑动。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin:24px 0 10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Vertical Tabs &middot;</div>
+  <div class="tab-vertical">
+    <div class="tab-header-vertical" id="tabHeaderV">
+      <button class="tab-btn-v active" data-tab="vtab1">节点A</button>
+      <button class="tab-btn-v" data-tab="vtab2">节点B</button>
+      <button class="tab-btn-v" data-tab="vtab3">节点C</button>
+      <button class="tab-btn-v" data-tab="vtab4">节点D</button>
+    </div>
+    <div class="tab-content-vertical">
+      <div class="tab-panel active" id="vtab1">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>节点 A 数据</h3>
+          <p>垂直标签页适用于左侧固定导航、右侧内容区的布局模式。常见于后台管理系统、设置页面等场景。</p>
+        </div>
+      </div>
+      <div class="tab-panel" id="vtab2">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>节点 B 数据</h3>
+          <p>垂直布局在宽屏设备上效率更高，但在移动端通常需要折叠为水平布局或抽屉形式。</p>
+        </div>
+      </div>
+      <div class="tab-panel" id="vtab3">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>节点 C 数据</h3>
+          <p>可通过媒体查询在移动端自动切换为水平标签，实现响应式适配。</p>
+        </div>
+      </div>
+      <div class="tab-panel" id="vtab4">
+        <div class="info-card" style="margin-bottom:0;">
+          <h3>节点 D 数据</h3>
+          <p>垂直标签页支持图标+文字的组合形式，提升视觉辨识度。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 状态管理</h4>
+      <p>维护 activeIndex 状态，切换时更新对应标签和面板的活动类名。避免直接操作 DOM，通过数据驱动视图更新。</p>
+      <h4>2. 指示器动画</h4>
+      <p>使用 getBoundingClientRect() 计算标签位置，通过 transform: translateX() 移动指示器元素，实现平滑跟随效果。</p>
+      <h4>3. 懒加载策略</h4>
+      <p>首次渲染仅加载当前标签内容，其他标签内容延迟渲染。可通过 IntersectionObserver 或手动标记实现。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== FAB PAGE ====== -->
+<div class="page-section" id="page-fab">
+  <div class="section-header">
+    <h1>Floating Action Menu</h1>
+    <div class="subtitle">FAB &middot; Speed Dial &middot; Material Design Pattern</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>悬浮操作按钮(FAB)位于屏幕固定位置，点击后展开 radial 或 linear 排列的子操作项。源自 Material Design 规范，是安卓原生系统的标志性交互。</p>
+    <span class="tag">Material Design</span>
+    <span class="tag">Radial</span>
+    <span class="tag">Speed Dial</span>
+  </div>
+  <div style="text-align:center;padding:44px 0;">
+    <div style="font-size:12px;color:var(--text-light);margin-bottom:24px;letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">点击右下角悬浮按钮体验 &middot;</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="layers" class="card-icon" style="width:12px;height:12px;"></i>布局变体</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. Linear (线性展开)</h4>
+      <p>子按钮沿垂直或水平方向线性排列。适合 2-5 个操作项，视觉层级清晰。</p>
+      <h4>2. Radial (径向展开)</h4>
+      <p>子按钮以主按钮为圆心呈扇形展开。适合 3-6 个操作项，空间利用率高但需避免遮挡内容。</p>
+      <h4>3. Morphing (变形展开)</h4>
+      <p>主按钮变形为工具栏或卡片，内部展示操作项。适合操作项较多(6+)的场景。</p>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 定位策略</h4>
+      <p>使用 position: fixed 固定定位，配合 z-index 确保层级正确。注意处理安全区域(safe-area-inset)。</p>
+      <h4>2. 展开动画</h4>
+      <p>子按钮使用 transition-delay 实现错开动画(Stagger Animation)，主按钮旋转 45° 变为关闭图标。</p>
+      <h4>3. 点击外部关闭</h4>
+      <p>监听 document 的点击事件，判断点击目标是否在 FAB 容器内，实现点击外部自动收起。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== DROPDOWN PAGE ====== -->
+<div class="page-section" id="page-dropdown">
+  <div class="section-header">
+    <h1>Dropdown Menu</h1>
+    <div class="subtitle">Select / Cascade / Multi-Level Dropdown</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>下拉菜单通过点击触发器展开选项列表，支持单选、多选、级联选择等模式。是最基础也是最常用的菜单形式之一。</p>
+    <span class="tag">单选/多选</span>
+    <span class="tag">级联</span>
+    <span class="tag">搜索过滤</span>
+  </div>
+  <div style="margin-bottom:10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Single Select &middot;</div>
+  <div class="dropdown-wrapper" id="dropdown1">
+    <button class="dropdown-trigger" data-dropdown="dropdown1">
+      <span id="dd1Value">选择操作类型</span>
+      <span class="trigger-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+    </button>
+    <div class="dropdown-menu">
+      <div class="dropdown-item" data-dropdown-select="dropdown1" data-value="数据查询"><i data-lucide="search" style="width:16px;height:16px;"></i> 数据查询</div>
+      <div class="dropdown-item" data-dropdown-select="dropdown1" data-value="批量导入"><i data-lucide="download" style="width:16px;height:16px;"></i> 批量导入</div>
+      <div class="dropdown-item" data-dropdown-select="dropdown1" data-value="导出报表"><i data-lucide="upload" style="width:16px;height:16px;"></i> 导出报表</div>
+      <div class="dropdown-item" data-dropdown-select="dropdown1" data-value="系统备份"><i data-lucide="save" style="width:16px;height:16px;"></i> 系统备份</div>
+      <div class="dropdown-item" data-dropdown-select="dropdown1" data-value="清理缓存"><i data-lucide="trash-2" style="width:16px;height:16px;"></i> 清理缓存</div>
+    </div>
+  </div>
+  <div style="margin:18px 0 10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Cascade Select &middot;</div>
+  <div class="cascade-dropdown">
+    <div class="dropdown-wrapper" id="cascade1">
+      <button class="dropdown-trigger" data-dropdown="cascade1">
+        <span id="cs1Value">选择大类</span>
+        <span class="trigger-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-item" data-cascade="1" data-value="系统模块">系统模块</div>
+        <div class="dropdown-item" data-cascade="1" data-value="用户模块">用户模块</div>
+        <div class="dropdown-item" data-cascade="1" data-value="数据模块">数据模块</div>
+      </div>
+    </div>
+    <div class="dropdown-wrapper" id="cascade2">
+      <button class="dropdown-trigger" data-dropdown="cascade2">
+        <span id="cs2Value">选择子类</span>
+        <span class="trigger-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+      </button>
+      <div class="dropdown-menu" id="cascade2Menu">
+        <div class="dropdown-item" style="color:var(--text-light);">请先选择大类</div>
+      </div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 定位计算</h4>
+      <p>下拉菜单使用 position: absolute 相对于触发器定位。需检测视口边界，当下方空间不足时自动翻转至上方的 bottom: calc(100% + 4px)。</p>
+      <h4>2. 级联联动</h4>
+      <p>上级选择变化时，动态更新下级选项数据并重置下级选中状态。可通过事件总线或回调函数实现组件间通信。</p>
+      <h4>3. 键盘导航</h4>
+      <p>支持 ↑↓ 方向键导航、Enter 确认、Esc 关闭。通过 tabindex 和 keydown 事件监听实现无障碍访问。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== GRID PAGE ====== -->
+<div class="page-section" id="page-grid">
+  <div class="section-header">
+    <h1>Grid Menu</h1>
+    <div class="subtitle">Icon Grid &middot; App Launcher &middot; Quick Actions</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>网格菜单以等宽图标网格形式展示功能入口，常见于应用启动器、快捷操作面板。支持 3-5 列自适应布局，点击后跳转或触发操作。</p>
+    <span class="tag">自适应列数</span>
+    <span class="tag">图标+文字</span>
+    <span class="tag">长按菜单</span>
+  </div>
+  <div style="margin-bottom:10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">4-Column Grid &middot;</div>
+  <div class="grid-menu">
+    <div class="grid-item" data-toast="打开: 数据面板">
+      <div class="grid-icon"><i data-lucide="bar-chart-3" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">数据面板</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 消息中心">
+      <div class="grid-icon"><i data-lucide="message-square" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">消息中心</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 文件管理">
+      <div class="grid-icon"><i data-lucide="folder" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">文件管理</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 系统设置">
+      <div class="grid-icon"><i data-lucide="settings" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">系统设置</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 用户管理">
+      <div class="grid-icon"><i data-lucide="users" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">用户管理</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 安全审计">
+      <div class="grid-icon"><i data-lucide="lock" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">安全审计</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 日志分析">
+      <div class="grid-icon"><i data-lucide="scroll-text" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">日志分析</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 网络监控">
+      <div class="grid-icon"><i data-lucide="globe" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">网络监控</div>
+    </div>
+  </div>
+  <div style="margin:18px 0 10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">3-Column Grid &middot;</div>
+  <div class="grid-menu" style="grid-template-columns:repeat(3,1fr);">
+    <div class="grid-item" data-toast="打开: 数据库">
+      <div class="grid-icon"><i data-lucide="database" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">数据库</div>
+    </div>
+    <div class="grid-item" data-toast="打开: API网关">
+      <div class="grid-icon"><i data-lucide="plug" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">API网关</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 缓存层">
+      <div class="grid-icon"><i data-lucide="zap" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">缓存层</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 消息队列">
+      <div class="grid-icon"><i data-lucide="mail" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">消息队列</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 定时任务">
+      <div class="grid-icon"><i data-lucide="clock" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">定时任务</div>
+    </div>
+    <div class="grid-item" data-toast="打开: 负载均衡">
+      <div class="grid-icon"><i data-lucide="scale" style="width:22px;height:22px;"></i></div>
+      <div class="grid-label">负载均衡</div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 响应式列数</h4>
+      <p>使用 CSS Grid 的 repeat(auto-fill, minmax(72px, 1fr)) 实现自动列数调整，或根据屏幕宽度手动切换列数类。</p>
+      <h4>2. 触摸反馈</h4>
+      <p>使用 :active 伪类或 touchstart/touchend 事件提供即时视觉反馈。长按可触发上下文菜单。</p>
+      <h4>3. 拖拽排序</h4>
+      <p>通过 HTML5 Drag API 或 Touch 事件实现网格项的拖拽重排，配合 transform 动画提供流畅的交换效果。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LIST PAGE ====== -->
+<div class="page-section" id="page-list">
+  <div class="section-header">
+    <h1>List Menu</h1>
+    <div class="subtitle">Grouped List &middot; Description List &middot; Navigation List</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>列表菜单以垂直列表形式展示选项，支持分组标题、图标、描述文字、徽标等丰富内容。适合需要展示详细信息的导航场景。</p>
+    <span class="tag">分组</span>
+    <span class="tag">富内容</span>
+    <span class="tag">分割线</span>
+  </div>
+  <div class="list-menu">
+    <div class="list-group-title">系统功能 &middot;</div>
+    <div class="list-item" data-toast="进入: 系统概览">
+      <div class="list-icon"><i data-lucide="home" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">系统概览</div><div class="list-desc">查看系统整体运行状态与关键指标</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-toast="进入: 进程管理">
+      <div class="list-icon"><i data-lucide="settings" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">进程管理</div><div class="list-desc">监控和管理系统进程与线程</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-toast="进入: 服务状态">
+      <div class="list-icon"><i data-lucide="wrench" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">服务状态</div><div class="list-desc">查看各微服务的健康状态</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-group-title">数据管理 &middot;</div>
+    <div class="list-item" data-toast="进入: 数据查询">
+      <div class="list-icon"><i data-lucide="search" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">数据查询</div><div class="list-desc">执行SQL查询与数据检索</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-toast="进入: 数据迁移">
+      <div class="list-icon"><i data-lucide="refresh-cw" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">数据迁移</div><div class="list-desc">跨库/跨表数据迁移工具</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-toast="进入: 备份恢复">
+      <div class="list-icon"><i data-lucide="save" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">备份恢复</div><div class="list-desc">全量/增量备份与灾难恢复</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 分组策略</h4>
+      <p>使用 sticky 定位实现分组标题的吸顶效果，滚动时当前分组标题固定在列表顶部，提升长列表的可读性。</p>
+      <h4>2. 右滑操作</h4>
+      <p>列表项支持左滑/右滑露出操作按钮(编辑/删除/更多)。通过 transform: translateX() 实现滑动效果。</p>
+      <h4>3. 虚拟滚动</h4>
+      <p>长列表(1000+项)使用虚拟滚动技术，仅渲染可视区域内的 DOM 节点，通过 padding-top/bottom 维持滚动条高度。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== STEPPER PAGE ====== -->
+<div class="page-section" id="page-stepper">
+  <div class="section-header">
+    <h1>Stepper Navigation</h1>
+    <div class="subtitle">Step-by-Step &middot; Wizard &middot; Progress Indicator</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>步骤导航将复杂流程分解为多个步骤，引导用户按顺序完成。支持水平/垂直布局，可显示完成状态、当前步骤和待处理步骤。</p>
+    <span class="tag">线性流程</span>
+    <span class="tag">状态追踪</span>
+    <span class="tag">可跳转</span>
+  </div>
+  <div class="stepper" id="stepperDemo">
+    <div class="step completed" data-step="0"><div class="step-circle"><i data-lucide="check" style="width:14px;height:14px;"></i></div><div class="step-label">配置</div></div>
+    <div class="step-connector completed"></div>
+    <div class="step completed" data-step="1"><div class="step-circle"><i data-lucide="check" style="width:14px;height:14px;"></i></div><div class="step-label">验证</div></div>
+    <div class="step-connector completed"></div>
+    <div class="step active" data-step="2"><div class="step-circle">3</div><div class="step-label">部署</div></div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="3"><div class="step-circle">4</div><div class="step-label">测试</div></div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="4"><div class="step-circle">5</div><div class="step-label">完成</div></div>
+  </div>
+  <div style="text-align:center;margin-bottom:18px;">
+    <button class="nav-btn" id="btnPrevStep" style="padding:12px 22px;width:auto;font-size:13px;border-radius:12px;"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> 上一步</button>
+    <button class="nav-btn" id="btnNextStep" style="padding:12px 22px;width:auto;font-size:13px;margin-left:10px;border-radius:12px;">下一步 <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></button>
+  </div>
+  <div class="info-card" id="stepContent">
+    <h3>当前步骤: 部署</h3>
+    <p>正在将配置应用到目标环境。此步骤包括：代码打包、依赖安装、环境变量注入、服务启动等操作。</p>
+    <div style="margin-top:14px;padding:14px;background:rgba(196,113,90,0.03);border-radius:10px;">
+      <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;font-family:'Cormorant Garamond',serif;font-style:italic;">Deploy Log &middot;</div>
+      <div style="font-size:12px;color:var(--accent-sage);line-height:1.9;">[OK] 代码打包完成<br>[OK] 依赖解析成功<br>[OK] 环境变量注入<br>[..] 服务启动中...</div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 状态机设计</h4>
+      <p>每个步骤具有三种状态：待处理(pending)、进行中(active)、已完成(completed)。通过状态机管理步骤流转逻辑。</p>
+      <h4>2. 线性约束</h4>
+      <p>默认线性流程不允许跳步，但可通过配置 linear: false 允许用户点击已完成的步骤进行回溯修改。</p>
+      <h4>3. 进度计算</h4>
+      <p>进度百分比 = (已完成步骤数 / 总步骤数) x 100%。可用于驱动顶部进度条或圆形进度指示器。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== BREADCRUMB PAGE ====== -->
+<div class="page-section" id="page-breadcrumb">
+  <div class="section-header">
+    <h1>Breadcrumb Nav</h1>
+    <div class="subtitle">Path Indicator &middot; Hierarchy Navigation</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>面包屑导航显示当前页面在网站层级结构中的位置，帮助用户了解所处位置并快速返回上级页面。适用于深层级内容结构。</p>
+    <span class="tag">层级指示</span>
+    <span class="tag">快速返回</span>
+    <span class="tag">SEO友好</span>
+  </div>
+  <div class="breadcrumb" id="breadcrumbDemo">
+    <span class="breadcrumb-item" data-crumb="0">首页</span>
+    <span class="breadcrumb-separator"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+    <span class="breadcrumb-item" data-crumb="1">系统管理</span>
+    <span class="breadcrumb-separator"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+    <span class="breadcrumb-item" data-crumb="2">用户权限</span>
+    <span class="breadcrumb-separator"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+    <span class="breadcrumb-item" data-crumb="3">角色配置</span>
+    <span class="breadcrumb-separator"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+    <span class="breadcrumb-item active">管理员角色</span>
+  </div>
+  <div style="text-align:center;margin-bottom:18px;">
+    <button class="nav-btn" id="btnAddCrumb" style="padding:12px 22px;width:auto;font-size:13px;border-radius:12px;"><i data-lucide="plus" style="width:14px;height:14px;"></i> 深入一级</button>
+    <button class="nav-btn" id="btnPopCrumb" style="padding:12px 22px;width:auto;font-size:13px;margin-left:10px;border-radius:12px;"><i data-lucide="minus" style="width:14px;height:14px;"></i> 返回上级</button>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 数据结构</h4>
+      <p>面包屑数据通常以数组形式存储，每个元素包含 {label, path, icon}。通过 Array.prototype.slice(0, -1) 获取父级路径。</p>
+      <h4>2. 分隔符样式</h4>
+      <p>常见分隔符：> > / > >。也可使用图标字体或SVG箭头。最后一个元素通常为纯文本(当前页)，不可点击。</p>
+      <h4>3. Schema.org 标记</h4>
+      <p>使用语义化标签，配合 JSON-LD 的 BreadcrumbList 结构化数据提升 SEO。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== CONTEXT PAGE ====== -->
+<div class="page-section" id="page-context">
+  <div class="section-header">
+    <h1>Context Menu</h1>
+    <div class="subtitle">Right Click Menu &middot; Long Press Menu &middot; Popup Menu</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>上下文菜单通过右键点击(PC)或长按(移动端)触发，提供与当前上下文相关的操作选项。需同时支持鼠标和触摸事件。</p>
+    <span class="tag">右键/长按</span>
+    <span class="tag">位置自适应</span>
+    <span class="tag">快捷键支持</span>
+  </div>
+  <div class="context-trigger-area" id="contextTrigger">
+    <div style="font-size:28px;margin-bottom:10px;"><i data-lucide="clipboard-list" style="width:40px;height:40px;"></i></div>
+    <div>长按此区域 (移动端) 或右键点击 (PC端)</div>
+    <div style="font-size:11px;margin-top:10px;color:var(--text-light);font-family:'Cormorant Garamond',serif;font-style:italic;">触发上下文菜单演示</div>
+  </div>
+  <div class="context-menu" id="contextMenu">
+    <div class="context-item" data-ctx="复制"><i data-lucide="clipboard" style="width:16px;height:16px;"></i> 复制</div>
+    <div class="context-item" data-ctx="剪切"><i data-lucide="scissors" style="width:16px;height:16px;"></i> 剪切</div>
+    <div class="context-item" data-ctx="粘贴"><i data-lucide="pin" style="width:16px;height:16px;"></i> 粘贴</div>
+    <div class="context-divider"></div>
+    <div class="context-item" data-ctx="全选"><i data-lucide="check-square" style="width:16px;height:16px;"></i> 全选</div>
+    <div class="context-item" data-ctx="删除"><i data-lucide="trash-2" style="width:16px;height:16px;"></i> 删除</div>
+    <div class="context-divider"></div>
+    <div class="context-item" data-ctx="属性"><i data-lucide="info" style="width:16px;height:16px;"></i> 属性</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 事件监听</h4>
+      <p>PC端监听 contextmenu 事件并 preventDefault() 阻止默认菜单。移动端监听 touchstart 启动定时器，touchend 清除，超时触发。</p>
+      <h4>2. 边界检测</h4>
+      <p>计算菜单尺寸与视口边界，当右侧空间不足时向左展开，底部空间不足时向上展开。使用 getBoundingClientRect() 获取精确尺寸。</p>
+      <h4>3. 层级菜单</h4>
+      <p>支持嵌套子菜单，鼠标悬停(Hover)或点击展开。子菜单位置根据父菜单边界动态计算，避免溢出视口。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SEARCH PAGE ====== -->
+<div class="page-section" id="page-search">
+  <div class="section-header">
+    <h1>Search Filter Menu</h1>
+    <div class="subtitle">Searchable List &middot; Filter Chips &middot; Autocomplete</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>搜索过滤菜单结合搜索框与过滤标签，实时筛选列表内容。支持关键词高亮、自动补全、多条件组合过滤等高级功能。</p>
+    <span class="tag">实时搜索</span>
+    <span class="tag">多条件过滤</span>
+    <span class="tag">高亮匹配</span>
+  </div>
+  <div class="search-bar">
+    <span class="search-icon"><i data-lucide="search" style="width:15px;height:15px;"></i></span>
+    <input type="text" id="searchInput" placeholder="搜索菜单项...">
+  </div>
+  <div class="filter-chips" id="filterChips">
+    <button class="filter-chip active" data-filter="all">全部</button>
+    <button class="filter-chip" data-filter="system">系统</button>
+    <button class="filter-chip" data-filter="data">数据</button>
+    <button class="filter-chip" data-filter="user">用户</button>
+    <button class="filter-chip" data-filter="security">安全</button>
+  </div>
+  <div class="list-menu" id="searchResultList">
+    <div class="list-item" data-category="system" data-toast="打开: 系统监控">
+      <div class="list-icon"><i data-lucide="bar-chart-3" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">系统监控</div><div class="list-desc">实时监控系统资源使用情况</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-category="system" data-toast="打开: 进程管理">
+      <div class="list-icon"><i data-lucide="settings" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">进程管理</div><div class="list-desc">管理系统进程与线程</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-category="data" data-toast="打开: 数据查询">
+      <div class="list-icon"><i data-lucide="search" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">数据查询</div><div class="list-desc">执行SQL查询与数据检索</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-category="data" data-toast="打开: 数据导入">
+      <div class="list-icon"><i data-lucide="download" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">数据导入</div><div class="list-desc">批量导入外部数据文件</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-category="user" data-toast="打开: 用户列表">
+      <div class="list-icon"><i data-lucide="users" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">用户列表</div><div class="list-desc">查看和管理所有系统用户</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-category="user" data-toast="打开: 权限配置">
+      <div class="list-icon"><i data-lucide="key" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">权限配置</div><div class="list-desc">配置用户角色与权限规则</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-category="security" data-toast="打开: 安全审计">
+      <div class="list-icon"><i data-lucide="lock" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">安全审计</div><div class="list-desc">查看安全事件与审计日志</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+    <div class="list-item" data-category="security" data-toast="打开: 访问控制">
+      <div class="list-icon"><i data-lucide="shield" style="width:18px;height:18px;"></i></div>
+      <div class="list-content"><div class="list-title">访问控制</div><div class="list-desc">配置IP白名单与访问策略</div></div>
+      <div class="list-arrow"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 防抖搜索</h4>
+      <p>使用 debounce 函数延迟搜索执行(通常 200-300ms)，避免每次输入都触发搜索导致的性能问题。</p>
+      <h4>2. 多条件组合</h4>
+      <p>搜索关键词与过滤标签为 AND 关系：结果必须同时满足关键词匹配和分类过滤。通过 Array.prototype.filter() 链式调用实现。</p>
+      <h4>3. 高亮实现</h4>
+      <p>使用正则表达式替换匹配文本为带高亮样式的 mark 标签。注意转义特殊字符防止 XSS。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TREE PAGE ====== -->
+<div class="page-section" id="page-tree">
+  <div class="section-header">
+    <h1>Tree Menu</h1>
+    <div class="subtitle">Hierarchical Tree &middot; File Explorer &middot; Org Chart</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>树形菜单以层级缩进结构展示数据，支持展开/收起节点、选中节点、拖拽排序等操作。适用于文件系统、组织架构、分类目录等场景。</p>
+    <span class="tag">无限层级</span>
+    <span class="tag">懒加载</span>
+    <span class="tag">复选框</span>
+  </div>
+  <div class="tree-menu" id="treeDemo">
+    <div class="tree-node open">
+      <div class="tree-node-header" data-tree-toggle>
+        <span class="tree-toggle open"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+        <span class="tree-icon"><i data-lucide="folder-open" style="width:15px;height:15px;"></i></span>
+        <span class="tree-label">根目录</span>
+      </div>
+      <div class="tree-children">
+        <div class="tree-node open">
+          <div class="tree-node-header" data-tree-toggle>
+            <span class="tree-toggle open"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+            <span class="tree-icon"><i data-lucide="folder" style="width:15px;height:15px;"></i></span>
+            <span class="tree-label">系统模块</span>
+          </div>
+          <div class="tree-children">
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 核心服务">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">核心服务</span>
+              </div>
+            </div>
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 网关服务">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">网关服务</span>
+              </div>
+            </div>
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 消息服务">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">消息服务</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tree-node">
+          <div class="tree-node-header" data-tree-toggle>
+            <span class="tree-toggle"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+            <span class="tree-icon"><i data-lucide="folder" style="width:15px;height:15px;"></i></span>
+            <span class="tree-label">用户模块</span>
+          </div>
+          <div class="tree-children">
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 用户认证">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">用户认证</span>
+              </div>
+            </div>
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 权限管理">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">权限管理</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tree-node">
+          <div class="tree-node-header" data-tree-toggle>
+            <span class="tree-toggle"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+            <span class="tree-icon"><i data-lucide="folder" style="width:15px;height:15px;"></i></span>
+            <span class="tree-label">数据模块</span>
+          </div>
+          <div class="tree-children">
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 数据存储">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">数据存储</span>
+              </div>
+            </div>
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 缓存层">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">缓存层</span>
+              </div>
+            </div>
+            <div class="tree-node">
+              <div class="tree-node-header" data-toast="选中: 搜索引擎">
+                <span class="tree-toggle leaf"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>
+                <span class="tree-icon"><i data-lucide="file-text" style="width:15px;height:15px;"></i></span>
+                <span class="tree-label">搜索引擎</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 递归渲染</h4>
+      <p>树形数据通常为嵌套 JSON 结构。使用递归函数遍历节点数组，为每个节点生成对应的 DOM 结构。叶子节点不显示展开按钮。</p>
+      <h4>2. 懒加载</h4>
+      <p>首次仅渲染可见层级，点击展开时通过 AJAX 或本地数据动态加载子节点。使用占位符(Skeleton)提升感知性能。</p>
+      <h4>3. 虚拟化</h4>
+      <p>大型树(10000+节点)使用虚拟滚动，仅渲染可视区域内的节点。通过计算节点高度和滚动位置动态更新 DOM。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SWIPE PAGE ====== -->
+<div class="page-section" id="page-swipe">
+  <div class="section-header">
+    <h1>Swipe Action Menu</h1>
+    <div class="subtitle">Swipe to Reveal &middot; Slide Actions &middot; Gesture Menu</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>滑动菜单通过水平滑动手势露出隐藏的操作按钮。源自 iOS 的 Mail 应用，现已成为移动端列表项的标准交互模式。</p>
+    <span class="tag">手势驱动</span>
+    <span class="tag">弹性回弹</span>
+    <span class="tag">多操作</span>
+  </div>
+  <div class="swipe-hint"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> 向左滑动列表项体验滑动操作</div>
+  <div class="swipe-item-wrapper">
+    <div class="swipe-actions">
+      <div class="swipe-action more" data-swipe-action="更多" data-swipe-index="0"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i><br>更多</div>
+      <div class="swipe-action edit" data-swipe-action="编辑" data-swipe-index="0"><i data-lucide="edit-3" style="width:16px;height:16px;"></i><br>编辑</div>
+      <div class="swipe-action delete" data-swipe-action="删除" data-swipe-index="0"><i data-lucide="x" style="width:16px;height:16px;"></i><br>删除</div>
+    </div>
+    <div class="swipe-content" data-swipe="0">
+      <div style="display:flex;align-items:center;">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(196,113,90,0.06);display:flex;align-items:center;justify-content:center;margin-right:14px;border:1.5px solid var(--border-soft);"><i data-lucide="bar-chart-3" style="width:18px;height:18px;"></i></div>
+        <div><div style="font-size:14px;color:var(--text-dark);">数据报告_2024_Q3.pdf</div><div style="font-size:12px;color:var(--text-light);">2.4 MB &middot; 2024-09-30</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="swipe-item-wrapper">
+    <div class="swipe-actions">
+      <div class="swipe-action more" data-swipe-action="更多" data-swipe-index="1"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i><br>更多</div>
+      <div class="swipe-action edit" data-swipe-action="编辑" data-swipe-index="1"><i data-lucide="edit-3" style="width:16px;height:16px;"></i><br>编辑</div>
+      <div class="swipe-action delete" data-swipe-action="删除" data-swipe-index="1"><i data-lucide="x" style="width:16px;height:16px;"></i><br>删除</div>
+    </div>
+    <div class="swipe-content" data-swipe="1">
+      <div style="display:flex;align-items:center;">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(196,113,90,0.06);display:flex;align-items:center;justify-content:center;margin-right:14px;border:1.5px solid var(--border-soft);"><i data-lucide="folder" style="width:18px;height:18px;"></i></div>
+        <div><div style="font-size:14px;color:var(--text-dark);">项目文档集合</div><div style="font-size:12px;color:var(--text-light);">12 项 &middot; 2024-10-15</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="swipe-item-wrapper">
+    <div class="swipe-actions">
+      <div class="swipe-action more" data-swipe-action="更多" data-swipe-index="2"><i data-lucide="more-vertical" style="width:16px;height:16px;"></i><br>更多</div>
+      <div class="swipe-action edit" data-swipe-action="编辑" data-swipe-index="2"><i data-lucide="edit-3" style="width:16px;height:16px;"></i><br>编辑</div>
+      <div class="swipe-action delete" data-swipe-action="删除" data-swipe-index="2"><i data-lucide="x" style="width:16px;height:16px;"></i><br>删除</div>
+    </div>
+    <div class="swipe-content" data-swipe="2">
+      <div style="display:flex;align-items:center;">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(196,113,90,0.06);display:flex;align-items:center;justify-content:center;margin-right:14px;border:1.5px solid var(--border-soft);"><i data-lucide="image" style="width:18px;height:18px;"></i></div>
+        <div><div style="font-size:14px;color:var(--text-dark);">架构设计图_v2.png</div><div style="font-size:12px;color:var(--text-light);">856 KB &middot; 2024-10-20</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 触摸追踪</h4>
+      <p>记录 touchstart 初始位置，touchmove 实时计算位移 deltaX，通过 transform: translateX(deltaX) 实时跟随手指。</p>
+      <h4>2. 阈值判断</h4>
+      <p>touchend 时判断滑动距离：超过操作按钮总宽度(如 210px)则完全展开；超过 50% 则弹性展开；否则回弹关闭。</p>
+      <h4>3. 互斥机制</h4>
+      <p>展开某一项时，自动收起其他已展开项。通过全局状态管理当前展开的索引，避免多个项同时展开造成的视觉混乱。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SIDEBAR PAGE ====== -->
+<div class="page-section" id="page-sidebar">
+  <div class="section-header">
+    <h1>Sidebar Expand</h1>
+    <div class="subtitle">Collapsible Sidebar &middot; Mini Sidebar &middot; Rail Navigation</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>侧边栏展开模式在收起时仅显示图标(迷你模式)，展开后显示图标+文字。适合桌面端后台系统，移动端通常折叠为抽屉菜单。</p>
+    <span class="tag">图标/文字切换</span>
+    <span class="tag">宽度动画</span>
+    <span class="tag">响应式</span>
+  </div>
+  <div style="margin-bottom:10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Demo &middot; 点击图标切换展开/收起</div>
+  <div class="sidebar-expand-demo">
+    <div class="sidebar-mini" id="sidebarMini">
+      <div class="sidebar-mini-item active" data-sb-select><i data-lucide="home" style="width:20px;height:20px;"></i><span class="sb-label">首页</span></div>
+      <div class="sidebar-mini-item" data-sb-select><i data-lucide="bar-chart-3" style="width:20px;height:20px;"></i><span class="sb-label">数据</span></div>
+      <div class="sidebar-mini-item" data-sb-select><i data-lucide="settings" style="width:20px;height:20px;"></i><span class="sb-label">设置</span></div>
+      <div class="sidebar-mini-item" data-sb-select><i data-lucide="user" style="width:20px;height:20px;"></i><span class="sb-label">用户</span></div>
+      <div class="sidebar-mini-item" id="btnToggleSidebar"><i data-lucide="menu" style="width:20px;height:20px;"></i><span class="sb-label">收起</span></div>
+    </div>
+    <div class="sidebar-content-area">
+      <div style="font-size:13px;color:var(--text-light);margin-bottom:10px;font-family:'Cormorant Garamond',serif;font-style:italic;">Content Area &middot;</div>
+      <div style="font-size:14px;color:var(--text-medium);line-height:1.9;">侧边栏展开模式常见于桌面端管理后台。收起时仅显示图标，节省水平空间；展开后显示完整文字标签，提升可读性。</div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 宽度过渡</h4>
+      <p>使用 transition: width 0.3s ease 实现平滑的宽度变化。内部元素使用 white-space: nowrap 防止文字换行。</p>
+      <h4>2. 文字淡入</h4>
+      <p>文字标签使用 opacity 过渡，在展开时淡入，收起时淡出。避免宽度变化过程中文字被截断的不自然感。</p>
+      <h4>3. 状态持久化</h4>
+      <p>使用 localStorage 记录用户偏好的展开/收起状态，页面刷新后自动恢复。也可通过 URL 参数或 Cookie 传递。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== HAMBURGER PAGE ====== -->
+<div class="page-section" id="page-hamburger">
+  <div class="section-header">
+    <h1>Hamburger Animation</h1>
+    <div class="subtitle">Menu Icon Morphing &middot; Three Lines to X &middot; CSS Transitions</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>汉堡菜单图标(三条横线)通过 CSS 动画变形为关闭图标(X)。动画细节直接影响用户体验，是品牌设计的重要组成部分。</p>
+    <span class="tag">CSS动画</span>
+    <span class="tag">变形效果</span>
+    <span class="tag">微交互</span>
+  </div>
+  <div style="margin-bottom:10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Style Variants &middot; 点击图标切换状态</div>
+  <div class="hamburger-demo">
+    <div>
+      <div class="hamburger" id="ham1" data-ham>
+        <span></span><span></span><span></span>
+      </div>
+      <div style="font-size:11px;color:var(--text-light);margin-top:10px;text-align:center;font-family:'Cormorant Garamond',serif;">经典X</div>
+    </div>
+    <div>
+      <div class="hamburger style2" id="ham2" data-ham>
+        <span></span><span></span><span></span>
+      </div>
+      <div style="font-size:11px;color:var(--text-light);margin-top:10px;text-align:center;font-family:'Cormorant Garamond',serif;">箭头式</div>
+    </div>
+    <div>
+      <div class="hamburger style3" id="ham3" data-ham>
+        <span></span><span></span><span></span>
+      </div>
+      <div style="font-size:11px;color:var(--text-light);margin-top:10px;text-align:center;font-family:'Cormorant Garamond',serif;">旋转式</div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 三条线结构</h4>
+      <p>使用三个 span 元素绝对定位。通过调整 top 值分布三条线，关闭时通过 transform: rotate() 和 opacity 实现变形。</p>
+      <h4>2. 缓动函数选择</h4>
+      <p>推荐使用 cubic-bezier(0.4, 0, 0.2, 1)(Material 标准) 或 cubic-bezier(0.68, -0.55, 0.265, 1.55)(弹性效果)。</p>
+      <h4>3. 可访问性</h4>
+      <p>添加 aria-label="菜单" 和 aria-expanded 属性，确保屏幕阅读器正确播报菜单状态。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== FULLSCREEN PAGE ====== -->
+<div class="page-section" id="page-fullscreen">
+  <div class="section-header">
+    <h1>Fullscreen Menu</h1>
+    <div class="subtitle">Overlay Navigation &middot; Full Page Menu &middot; Immersive Nav</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>全屏菜单覆盖整个视口，提供沉浸式的导航体验。适合导航项较少(5-8个)但需要强视觉表现力的场景，如创意作品集、品牌官网。</p>
+    <span class="tag">全屏覆盖</span>
+    <span class="tag">错开动画</span>
+    <span class="tag">高对比度</span>
+  </div>
+  <button class="nav-btn" id="btnOpenFullscreen" style="width:100%;padding:16px;margin-bottom:18px;font-size:14px;justify-content:center;border-radius:12px;">
+    <i data-lucide="maximize-2" style="width:18px;height:18px;"></i> 打开全屏菜单演示
+  </button>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 层级管理</h4>
+      <p>全屏菜单 z-index 应高于所有其他元素(通常 9999+)。打开时禁止背景滚动：document.body.style.overflow = 'hidden'。</p>
+      <h4>2. 错开动画</h4>
+      <p>菜单项使用 transition-delay 实现依次入场效果。延迟时间按索引递增(如 0.1s, 0.15s, 0.2s...)，创造节奏感。</p>
+      <h4>3. 关闭方式</h4>
+      <p>支持点击关闭按钮、点击背景遮罩、按 ESC 键三种关闭方式。关闭动画应与打开动画对称，保持视觉一致性。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== MASONRY PAGE ====== -->
+<div class="page-section" id="page-masonry">
+  <div class="section-header">
+    <h1>Masonry Tiles</h1>
+    <div class="subtitle">Dashboard Tiles &middot; Bento Grid &middot; Card Layout</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>磁贴菜单以不规则大小的卡片网格展示功能模块，类似 Bento Box 布局。不同尺寸的卡片暗示内容重要性差异，适合仪表盘首页。</p>
+    <span class="tag">不规则网格</span>
+    <span class="tag">视觉权重</span>
+    <span class="tag">Dashboard</span>
+  </div>
+  <div class="masonry-grid">
+    <div class="masonry-item tall" data-toast="打开: 系统总览">
+      <div class="ms-icon"><i data-lucide="bar-chart-3" style="width:30px;height:30px;"></i></div>
+      <div class="ms-title">系统总览</div>
+      <div class="ms-desc">实时监控所有系统指标与运行状态</div>
+      <div class="ms-stat">98%</div>
+    </div>
+    <div class="masonry-item" data-toast="打开: 流量分析">
+      <div class="ms-icon"><i data-lucide="trending-up" style="width:30px;height:30px;"></i></div>
+      <div class="ms-title">流量分析</div>
+      <div class="ms-desc">网络流量趋势</div>
+      <div class="ms-stat">2.4G</div>
+    </div>
+    <div class="masonry-item" data-toast="打开: 告警中心">
+      <div class="ms-icon"><i data-lucide="bell" style="width:30px;height:30px;"></i></div>
+      <div class="ms-title">告警中心</div>
+      <div class="ms-desc">待处理告警</div>
+      <div class="ms-stat" style="color:var(--accent-rose);">3</div>
+    </div>
+    <div class="masonry-item" data-toast="打开: 存储使用">
+      <div class="ms-icon"><i data-lucide="save" style="width:30px;height:30px;"></i></div>
+      <div class="ms-title">存储使用</div>
+      <div class="ms-desc">磁盘空间占用</div>
+      <div class="ms-stat">67%</div>
+    </div>
+    <div class="masonry-item" data-toast="打开: 在线用户">
+      <div class="ms-icon"><i data-lucide="users" style="width:30px;height:30px;"></i></div>
+      <div class="ms-title">在线用户</div>
+      <div class="ms-desc">当前活跃会话</div>
+      <div class="ms-stat">1.2K</div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. CSS Grid 布局</h4>
+      <p>使用 grid-template-columns 和 grid-row: span N 控制卡片尺寸。相比 Masonry.js 库，纯 CSS Grid 性能更好且无需 JS 计算。</p>
+      <h4>2. 视觉权重</h4>
+      <p>大卡片(2x2)用于展示核心指标，小卡片(1x1)用于次要信息。通过尺寸差异引导用户注意力，形成视觉层级。</p>
+      <h4>3. 响应式适配</h4>
+      <p>移动端通常简化为等宽网格(2列)，避免不规则布局导致的阅读困难。可通过 @media 查询切换布局模式。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== RADIAL PAGE ====== -->
+<div class="page-section" id="page-radial">
+  <div class="section-header">
+    <h1>Radial Menu</h1>
+    <div class="subtitle">Pie Menu &middot; Circular Menu &middot; Fan Menu</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>径向菜单以圆形扇区排列选项，用户向目标方向滑动即可选择。适合游戏UI、创意工具等需要快速选择的场景，在移动端较少使用。</p>
+    <span class="tag">扇形排列</span>
+    <span class="tag">方向选择</span>
+    <span class="tag">游戏UI</span>
+  </div>
+  <div style="text-align:center;padding:24px 0;">
+    <div style="font-size:12px;color:var(--text-light);margin-bottom:24px;letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">点击中心按钮展开径向菜单 &middot;</div>
+    <div class="radial-menu-container" id="radialMenu">
+      <button class="radial-center" id="btnRadial"><i data-lucide="plus" style="width:22px;height:22px;"></i></button>
+      <div class="radial-item" data-radial="复制" style="--angle:0deg;"><i data-lucide="clipboard" style="width:18px;height:18px;"></i></div>
+      <div class="radial-item" data-radial="剪切" style="--angle:72deg;"><i data-lucide="scissors" style="width:18px;height:18px;"></i></div>
+      <div class="radial-item" data-radial="粘贴" style="--angle:144deg;"><i data-lucide="pin" style="width:18px;height:18px;"></i></div>
+      <div class="radial-item" data-radial="删除" style="--angle:216deg;"><i data-lucide="trash-2" style="width:18px;height:18px;"></i></div>
+      <div class="radial-item" data-radial="分享" style="--angle:288deg;"><i data-lucide="share-2" style="width:18px;height:18px;"></i></div>
+    </div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 三角函数定位</h4>
+      <p>使用 Math.cos() 和 Math.sin() 计算每个选项的坐标：x = centerX + radius * cos(angle)，y = centerY + radius * sin(angle)。</p>
+      <h4>2. 展开动画</h4>
+      <p>选项从中心点向外扩散，使用 cubic-bezier(0.68, -0.55, 0.265, 1.55) 弹性缓动函数，创造"弹出"效果。</p>
+      <h4>3. 手势选择</h4>
+      <p>长按主按钮后向目标方向滑动释放即可选择。通过计算滑动角度匹配最近的选项，无需精确点击。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SEGMENTED PAGE ====== -->
+<div class="page-section" id="page-segmented">
+  <div class="section-header">
+    <h1>Segmented Control</h1>
+    <div class="subtitle">iOS Segmented &middot; Pill Switcher &middot; Button Group</div>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="info" class="card-icon" style="width:12px;height:12px;"></i>功能说明</h3>
+    <p>分段控制器以一组互斥的按钮呈现选项，一次只能选中一项。源自 iOS 设计规范，适合 2-5 个选项的切换场景，如视图模式切换、时间范围选择。</p>
+    <span class="tag">iOS风格</span>
+    <span class="tag">互斥选择</span>
+    <span class="tag">滑动指示器</span>
+  </div>
+  <div style="margin-bottom:10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">Basic Segmented &middot;</div>
+  <div class="segmented-control" id="segControl1">
+    <button class="segment-btn active" data-segment="seg1">日</button>
+    <button class="segment-btn" data-segment="seg1">周</button>
+    <button class="segment-btn" data-segment="seg1">月</button>
+    <button class="segment-btn" data-segment="seg1">年</button>
+  </div>
+  <div style="margin:18px 0 10px;font-size:12px;color:var(--text-light);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;">View Mode Switcher &middot;</div>
+  <div class="segmented-control" id="segControl2">
+    <button class="segment-btn active" data-segment="seg2">列表</button>
+    <button class="segment-btn" data-segment="seg2">网格</button>
+    <button class="segment-btn" data-segment="seg2">卡片</button>
+  </div>
+  <div class="info-card" id="segContent">
+    <h3>当前视图: 日</h3>
+    <p>按日粒度展示数据。分段控制器通过视觉上的"选中态"明确指示当前选项，减少用户的认知负担。</p>
+  </div>
+  <div class="info-card">
+    <h3><i data-lucide="code" class="card-icon" style="width:12px;height:12px;"></i>实现要点</h3>
+    <div class="dp-content" style="margin-top:10px;">
+      <h4>1. 滑动指示器</h4>
+      <p>高级实现使用一个独立的指示器元素，通过 transform: translateX() 滑动到当前选中按钮位置。使用 getBoundingClientRect() 计算目标位置。</p>
+      <h4>2. 等宽分布</h4>
+      <p>使用 flex: 1 使所有分段按钮等宽分布。按钮文字使用 text-align: center 居中，确保视觉平衡。</p>
+      <h4>3. 禁用状态</h4>
+      <p>支持禁用(disabled)状态，禁用项降低透明度并移除点击事件。常用于数据加载中或权限不足的场景。</p>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- ====== BOTTOM NAV ====== -->
+<div class="bottom-nav" id="bottomNav">
+  <button class="bottom-nav-item active" data-page="home">
+    <span class="nav-icon"><i data-lucide="home" style="width:22px;height:22px;"></i></span>
+    <span>首页</span>
+  </button>
+  <button class="bottom-nav-item" data-page="drawer">
+    <span class="nav-icon"><i data-lucide="folder-open" style="width:22px;height:22px;"></i></span>
+    <span>抽屉</span>
+  </button>
+  <button class="bottom-nav-item" data-page="accordion">
+    <span class="nav-icon"><i data-lucide="clipboard-list" style="width:22px;height:22px;"></i></span>
+    <span>折叠</span>
+  </button>
+  <button class="bottom-nav-item" data-page="tabs">
+    <span class="nav-icon"><i data-lucide="file-text" style="width:22px;height:22px;"></i></span>
+    <span>标签</span>
+  </button>
+  <button class="bottom-nav-item" data-page="more">
+    <span class="nav-icon"><i data-lucide="more-vertical" style="width:22px;height:22px;"></i></span>
+    <span>更多</span>
+  </button>
+</div>
+
+<!-- ====== MORE PANEL ====== -->
+<div class="detail-panel" id="morePanel">
+  <div class="dp-header">
+    <button class="dp-back" id="btnCloseMore"><i data-lucide="arrow-left" style="width:16px;height:16px;"></i></button>
+    <div class="dp-title">All Modules</div>
+  </div>
+  <div class="dp-content">
+    <div class="grid-menu" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+      <div class="grid-item" data-nav="fab"><div class="grid-icon"><i data-lucide="plus" style="width:22px;height:22px;"></i></div><div class="grid-label">悬浮</div></div>
+      <div class="grid-item" data-nav="dropdown"><div class="grid-icon"><i data-lucide="chevron-down-circle" style="width:22px;height:22px;"></i></div><div class="grid-label">下拉</div></div>
+      <div class="grid-item" data-nav="grid"><div class="grid-icon"><i data-lucide="layout-grid" style="width:22px;height:22px;"></i></div><div class="grid-label">网格</div></div>
+      <div class="grid-item" data-nav="list"><div class="grid-icon"><i data-lucide="align-justify" style="width:22px;height:22px;"></i></div><div class="grid-label">列表</div></div>
+      <div class="grid-item" data-nav="stepper"><div class="grid-icon"><i data-lucide="list-ordered" style="width:22px;height:22px;"></i></div><div class="grid-label">步骤</div></div>
+      <div class="grid-item" data-nav="breadcrumb"><div class="grid-icon"><i data-lucide="chevrons-right" style="width:22px;height:22px;"></i></div><div class="grid-label">面包屑</div></div>
+      <div class="grid-item" data-nav="context"><div class="grid-icon"><i data-lucide="clipboard-list" style="width:22px;height:22px;"></i></div><div class="grid-label">上下文</div></div>
+      <div class="grid-item" data-nav="search"><div class="grid-icon"><i data-lucide="search" style="width:22px;height:22px;"></i></div><div class="grid-label">搜索</div></div>
+      <div class="grid-item" data-nav="tree"><div class="grid-icon"><i data-lucide="git-branch" style="width:22px;height:22px;"></i></div><div class="grid-label">树形</div></div>
+      <div class="grid-item" data-nav="swipe"><div class="grid-icon"><i data-lucide="hand" style="width:22px;height:22px;"></i></div><div class="grid-label">滑动</div></div>
+      <div class="grid-item" data-nav="sidebar"><div class="grid-icon"><i data-lucide="panel-left" style="width:22px;height:22px;"></i></div><div class="grid-label">侧边栏</div></div>
+      <div class="grid-item" data-nav="hamburger"><div class="grid-icon"><i data-lucide="menu" style="width:22px;height:22px;"></i></div><div class="grid-label">汉堡</div></div>
+      <div class="grid-item" data-nav="fullscreen"><div class="grid-icon"><i data-lucide="maximize-2" style="width:22px;height:22px;"></i></div><div class="grid-label">全屏</div></div>
+      <div class="grid-item" data-nav="masonry"><div class="grid-icon"><i data-lucide="layout-grid" style="width:22px;height:22px;"></i></div><div class="grid-label">磁贴</div></div>
+      <div class="grid-item" data-nav="radial"><div class="grid-icon"><i data-lucide="circle-dot" style="width:22px;height:22px;"></i></div><div class="grid-label">径向</div></div>
+      <div class="grid-item" data-nav="segmented"><div class="grid-icon"><i data-lucide="rectangle-horizontal" style="width:22px;height:22px;"></i></div><div class="grid-label">分段</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== FAB ====== -->
+<div class="fab-container">
+  <div class="fab-menu" id="fabMenu">
+    <div class="fab-item" data-fab="分享"><span class="fab-item-label">分享</span><button class="fab-item-btn"><i data-lucide="share-2" style="width:18px;height:18px;"></i></button></div>
+    <div class="fab-item" data-fab="收藏"><span class="fab-item-label">收藏</span><button class="fab-item-btn"><i data-lucide="star" style="width:18px;height:18px;"></i></button></div>
+    <div class="fab-item" data-fab="刷新"><span class="fab-item-label">刷新</span><button class="fab-item-btn"><i data-lucide="refresh-cw" style="width:18px;height:18px;"></i></button></div>
+    <div class="fab-item" data-fab="设置"><span class="fab-item-label">设置</span><button class="fab-item-btn"><i data-lucide="settings" style="width:18px;height:18px;"></i></button></div>
+  </div>
+  <button class="fab-main" id="fabMain"><i data-lucide="plus" style="width:24px;height:24px;"></i></button>
+</div>
+
+<!-- ====== TOAST ====== -->
+<div class="toast" id="toast"></div>
+
+<script>
+
+// ====== DATA ======
+const pages = [
+  {id:'home',label:'首页',icon:'home'},
+  {id:'drawer',label:'抽屉菜单',icon:'folder-open'},
+  {id:'accordion',label:'手风琴',icon:'clipboard-list'},
+  {id:'tabs',label:'标签页',icon:'file-text'},
+  {id:'fab',label:'悬浮按钮',icon:'plus'},
+  {id:'dropdown',label:'下拉菜单',icon:'chevron-down-circle'},
+  {id:'grid',label:'网格菜单',icon:'layout-grid'},
+  {id:'list',label:'列表菜单',icon:'align-justify'},
+  {id:'stepper',label:'步骤导航',icon:'list-ordered'},
+  {id:'breadcrumb',label:'面包屑',icon:'chevrons-right'},
+  {id:'context',label:'上下文',icon:'clipboard-list'},
+  {id:'search',label:'搜索过滤',icon:'search'},
+  {id:'tree',label:'树形菜单',icon:'git-branch'},
+  {id:'swipe',label:'滑动菜单',icon:'hand'},
+  {id:'sidebar',label:'侧边栏',icon:'panel-left'},
+  {id:'hamburger',label:'汉堡动画',icon:'menu'},
+  {id:'fullscreen',label:'全屏菜单',icon:'maximize-2'},
+  {id:'masonry',label:'磁贴菜单',icon:'layout-grid'},
+  {id:'radial',label:'径向菜单',icon:'circle-dot'},
+  {id:'segmented',label:'分段控制',icon:'rectangle-horizontal'}
+];
+
+const drawerData = [
+  {icon:'home',label:'首页',page:'home'},
+  {icon:'folder-open',label:'导航菜单',children:[
+    {icon:'folder-open',label:'抽屉菜单',page:'drawer'},
+    {icon:'clipboard-list',label:'手风琴菜单',page:'accordion'},
+    {icon:'file-text',label:'标签页菜单',page:'tabs'},
+    {icon:'plus',label:'悬浮按钮',page:'fab'}
+  ]},
+  {icon:'chevron-down-circle',label:'选择菜单',children:[
+    {icon:'chevron-down-circle',label:'下拉菜单',page:'dropdown'},
+    {icon:'layout-grid',label:'网格菜单',page:'grid'},
+    {icon:'align-justify',label:'列表菜单',page:'list'},
+    {icon:'rectangle-horizontal',label:'分段控制',page:'segmented'}
+  ]},
+  {icon:'compass',label:'路径导航',children:[
+    {icon:'list-ordered',label:'步骤导航',page:'stepper'},
+    {icon:'chevrons-right',label:'面包屑',page:'breadcrumb'},
+    {icon:'git-branch',label:'树形菜单',page:'tree'}
+  ]},
+  {icon:'hand',label:'手势菜单',children:[
+    {icon:'hand',label:'滑动菜单',page:'swipe'},
+    {icon:'clipboard-list',label:'上下文菜单',page:'context'},
+    {icon:'search',label:'搜索过滤',page:'search'}
+  ]},
+  {icon:'palette',label:'布局展示',children:[
+    {icon:'panel-left',label:'侧边栏展开',page:'sidebar'},
+    {icon:'menu',label:'汉堡动画',page:'hamburger'},
+    {icon:'maximize-2',label:'全屏菜单',page:'fullscreen'},
+    {icon:'layout-grid',label:'磁贴菜单',page:'masonry'},
+    {icon:'circle-dot',label:'径向菜单',page:'radial'}
+  ]}
+];
+
+const cascadeData = {
+  '系统模块':['核心服务','网关服务','消息服务','调度服务'],
+  '用户模块':['用户认证','权限管理','角色定义','审计日志'],
+  '数据模块':['数据存储','缓存层','搜索引擎','数据同步']
+};
+
+const stepContents = [
+  {title:'配置',desc:'配置目标环境参数，包括服务器地址、端口、认证信息等基础配置项。',log:'[OK] 读取配置文件\n[OK] 解析环境变量\n[OK] 连接配置中心'},
+  {title:'验证',desc:'验证配置正确性与环境可用性，检查网络连通性、权限有效性和资源充足性。',log:'[OK] 网络连通性测试\n[OK] 权限验证通过\n[OK] 资源检查完成'},
+  {title:'部署',desc:'正在将配置应用到目标环境。此步骤包括：代码打包、依赖安装、环境变量注入、服务启动等操作。',log:'[OK] 代码打包完成\n[OK] 依赖解析成功\n[OK] 环境变量注入\n[..] 服务启动中...'},
+  {title:'测试',desc:'执行自动化测试套件，验证部署后的系统功能完整性与性能指标是否达标。',log:'[..] 单元测试运行中\n[..] 集成测试运行中\n[--] 性能测试待执行'},
+  {title:'完成',desc:'部署流程全部完成。系统已上线运行，监控告警已激活，可正常提供服务。',log:'[OK] 全部测试通过\n[OK] 监控已激活\n[OK] 部署完成'}
+];
+
+const segContents = {
+  '日':'按日粒度展示数据。适合查看单日详细波动，时间跨度为最近7天。',
+  '周':'按周粒度聚合数据。适合观察周度趋势，消除单日异常波动的影响。',
+  '月':'按月粒度展示数据。适合长期趋势分析，对比不同月份的表现差异。',
+  '年':'按年粒度汇总数据。适合年度总结与战略规划，展示宏观发展趋势。'
+};
+
+// ====== STATE ======
+const state = {
+  currentPage: 'home',
+  drawerOpen: false,
+  fabOpen: false,
+  fullscreenOpen: false,
+  stepperIndex: 2,
+  crumbPath: ['首页','系统管理','用户权限','角色配置','管理员角色'],
+  sidebarExpanded: false,
+  radialOpen: false,
+  activeDropdown: null,
+  swipeOpenIndex: -1,
+  currentFilter: 'all'
+};
+
+// ====== UTILS ======
+function $(sel){ return document.querySelector(sel); }
+function $$(sel){ return document.querySelectorAll(sel); }
+
+let toastTimer;
+function showToast(msg){
+  const toast = $('#toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 2200);
+}
+
+function updateTime(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  const el = $('#sysTime');
+  if(el) el.textContent = h+':'+m+':'+s;
+}
+
+function navToPage(pageId){
+  state.currentPage = pageId;
+  $$('.page-section').forEach(s => s.classList.remove('active'));
+  const target = $('#page-'+pageId);
+  if(target) target.classList.add('active');
+  $$('.bottom-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.page === pageId);
+  });
+  if(pageId === 'more'){
+    $('#morePanel').classList.add('open');
+  } else {
+    $('#morePanel').classList.remove('open');
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+
+// ====== DRAWER ======
+function openDrawer(){
+  state.drawerOpen = true;
+  $('#drawerOverlay').classList.add('open');
+  $('#drawerPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer(){
+  state.drawerOpen = false;
+  $('#drawerOverlay').classList.remove('open');
+  $('#drawerPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function initDrawerMenu(){
+  const list = $('#drawerMenuList');
+  if(!list) return;
+  list.innerHTML = '';
+  function renderItem(item, level){
+    const li = document.createElement('li');
+    li.className = 'drawer-menu-item';
+    if(item.children){
+      const header = document.createElement('div');
+      header.className = 'drawer-item-header';
+      header.innerHTML = '<span class="item-icon"><i data-lucide="'+item.icon+'" style="width:18px;height:18px;"></i></span><span class="item-label">'+item.label+'</span><span class="expand-icon"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>';
+      header.addEventListener('click', function(e){
+        e.stopPropagation();
+        li.classList.toggle('expanded');
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+      });
+      li.appendChild(header);
+      const sub = document.createElement('ul');
+      sub.className = 'drawer-submenu';
+      item.children.forEach(function(child){ sub.appendChild(renderItem(child, level+1)); });
+      li.appendChild(sub);
+    } else {
+      const a = document.createElement('a');
+      a.href = 'javascript:void(0)';
+      a.innerHTML = '<span class="item-icon"><i data-lucide="'+item.icon+'" style="width:18px;height:18px;"></i></span><span class="item-label">'+item.label+'</span>';
+      a.addEventListener('click', function(){
+        if(item.page){ closeDrawer(); navToPage(item.page); }
+      });
+      li.appendChild(a);
+    }
+    return li;
+  }
+  drawerData.forEach(function(item){ list.appendChild(renderItem(item, 0)); });
+}
+
+// Drawer swipe close
+let drawerStartX = 0;
+const drawerPanel = $('#drawerPanel');
+if(drawerPanel){
+  drawerPanel.addEventListener('touchstart', function(e){ drawerStartX = e.touches[0].clientX; }, {passive:true});
+  drawerPanel.addEventListener('touchmove', function(e){
+    if(!state.drawerOpen) return;
+    const deltaX = e.touches[0].clientX - drawerStartX;
+    if(deltaX < -50){ this.style.transform = 'translateX('+deltaX+'px)'; }
+  }, {passive:true});
+  drawerPanel.addEventListener('touchend', function(e){
+    const deltaX = e.changedTouches[0].clientX - drawerStartX;
+    this.style.transform = '';
+    if(deltaX < -80) closeDrawer();
+  });
+}
+
+// ====== FULLSCREEN MENU ======
+function initFullscreenMenu(){
+  const list = $('#fsMenuList');
+  if(!list) return;
+  pages.forEach(function(p){
+    const li = document.createElement('li');
+    li.className = 'fs-menu-item';
+    const a = document.createElement('a');
+    a.href = 'javascript:void(0)';
+    a.textContent = p.label.toUpperCase();
+    a.addEventListener('click', function(){ closeFullscreenMenu(); navToPage(p.id); });
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+}
+function openFullscreenMenu(){
+  state.fullscreenOpen = true;
+  $('#fullscreenMenu').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeFullscreenMenu(){
+  state.fullscreenOpen = false;
+  $('#fullscreenMenu').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ====== ACCORDION ======
+function initAccordion(){
+  $$('[data-accordion]').forEach(function(header){
+    header.addEventListener('click', function(){
+      const item = header.closest('.accordion-item');
+      const parent = item.parentElement;
+      if(parent.classList.contains('accordion-group') || parent.classList.contains('accordion-nested')){
+        parent.querySelectorAll('.accordion-item.open').forEach(function(openItem){
+          if(openItem !== item) openItem.classList.remove('open');
+        });
+      }
+      item.classList.toggle('open');
+    });
+  });
+}
+
+// ====== TABS ======
+function initTabs(){
+  // Horizontal tabs
+  $$('#tabHeaderH .tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      $$('#tabHeaderH .tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      $$('.tab-content .tab-panel').forEach(function(p){ p.classList.remove('active'); });
+      this.classList.add('active');
+      const panel = $('#'+this.dataset.tab);
+      if(panel) panel.classList.add('active');
+    });
+  });
+  // Vertical tabs
+  $$('#tabHeaderV .tab-btn-v').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      $$('#tabHeaderV .tab-btn-v').forEach(function(b){ b.classList.remove('active'); });
+      $$('.tab-content-vertical .tab-panel').forEach(function(p){ p.classList.remove('active'); });
+      this.classList.add('active');
+      const panel = $('#'+this.dataset.tab);
+      if(panel) panel.classList.add('active');
+    });
+  });
+}
+
+// ====== FAB ======
+function toggleFab(){
+  state.fabOpen = !state.fabOpen;
+  $('#fabMain').classList.toggle('open', state.fabOpen);
+  $('#fabMenu').classList.toggle('open', state.fabOpen);
+}
+
+// ====== DROPDOWN ======
+function toggleDropdown(id){
+  closeAllDropdowns();
+  const wrapper = $('#'+id);
+  if(wrapper){ wrapper.classList.add('open'); state.activeDropdown = id; }
+}
+function closeAllDropdowns(){
+  $$('.dropdown-wrapper.open').forEach(function(d){ d.classList.remove('open'); });
+  state.activeDropdown = null;
+}
+function initDropdowns(){
+  $$('[data-dropdown]').forEach(function(trigger){
+    trigger.addEventListener('click', function(e){
+      e.stopPropagation();
+      const id = this.dataset.dropdown;
+      const wrapper = $('#'+id);
+      const isOpen = wrapper.classList.contains('open');
+      closeAllDropdowns();
+      if(!isOpen){ wrapper.classList.add('open'); state.activeDropdown = id; }
+    });
+  });
+  $$('[data-dropdown-select]').forEach(function(item){
+    item.addEventListener('click', function(e){
+      e.stopPropagation();
+      const id = this.dataset.dropdownSelect;
+      const value = this.dataset.value;
+      const valEl = $('#'+id.replace('dropdown','dd').replace('cascade','cs')+'Value');
+      if(valEl) valEl.textContent = value;
+      this.parentElement.querySelectorAll('.dropdown-item').forEach(function(i){ i.classList.remove('selected'); });
+      this.classList.add('selected');
+      closeAllDropdowns();
+      showToast('选择: '+value);
+    });
+  });
+  $$('[data-cascade]').forEach(function(item){
+    item.addEventListener('click', function(e){
+      e.stopPropagation();
+      const level = parseInt(this.dataset.cascade);
+      const value = this.dataset.value;
+      if(level === 1){
+        $('#cs1Value').textContent = value;
+        $('#cs2Value').textContent = '选择子类';
+        const menu2 = $('#cascade2Menu');
+        const children = cascadeData[value] || [];
+        menu2.innerHTML = children.map(function(c){ return '<div class="dropdown-item" data-cascade="2" data-value="'+c+'">'+c+'</div>'; }).join('');
+        // Re-bind cascade2
+        menu2.querySelectorAll('[data-cascade="2"]').forEach(function(el){
+          el.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            const v = this.dataset.value;
+            $('#cs2Value').textContent = v;
+            closeAllDropdowns();
+            showToast('级联选择: '+$('#cs1Value').textContent+' > '+v);
+          });
+        });
+        closeAllDropdowns();
+        showToast('大类: '+value);
+      }
+    });
+  });
+}
+
+
+// ====== STEPPER ======
+function updateStepper(){
+  const steps = $$('#stepperDemo .step');
+  const connectors = $$('#stepperDemo .step-connector');
+  steps.forEach(function(step, i){
+    step.classList.remove('active','completed');
+    if(i < state.stepperIndex) step.classList.add('completed');
+    else if(i === state.stepperIndex) step.classList.add('active');
+  });
+  connectors.forEach(function(conn, i){
+    conn.classList.toggle('completed', i < state.stepperIndex);
+  });
+  const content = stepContents[state.stepperIndex];
+  const el = $('#stepContent');
+  if(el && content){
+    el.innerHTML = '<h3>当前步骤: '+content.title+'</h3><p>'+content.desc+'</p><div style="margin-top:14px;padding:14px;background:rgba(196,113,90,0.03);border-radius:10px;"><div style="font-size:12px;color:var(--text-light);margin-bottom:10px;font-family:Cormorant Garamond,serif;font-style:italic;">Deploy Log &middot;</div><div style="font-size:12px;color:var(--accent-sage);line-height:1.9;">'+content.log.replace(/\n/g,'<br>')+'</div></div>';
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+  }
+}
+function goToStep(index){
+  state.stepperIndex = index;
+  updateStepper();
+}
+function nextStep(){
+  if(state.stepperIndex < 4){ state.stepperIndex++; updateStepper(); }
+}
+function prevStep(){
+  if(state.stepperIndex > 0){ state.stepperIndex--; updateStepper(); }
+}
+function initStepper(){
+  $$('#stepperDemo .step').forEach(function(step){
+    step.addEventListener('click', function(){ goToStep(parseInt(this.dataset.step)); });
+  });
+  const btnPrev = $('#btnPrevStep');
+  const btnNext = $('#btnNextStep');
+  if(btnPrev) btnPrev.addEventListener('click', prevStep);
+  if(btnNext) btnNext.addEventListener('click', nextStep);
+}
+
+// ====== BREADCRUMB ======
+function updateBreadcrumb(){
+  const container = $('#breadcrumbDemo');
+  if(!container) return;
+  let html = '';
+  state.crumbPath.forEach(function(item, i){
+    if(i > 0) html += '<span class="breadcrumb-separator"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></span>';
+    if(i === state.crumbPath.length - 1){
+      html += '<span class="breadcrumb-item active">'+item+'</span>';
+    } else {
+      html += '<span class="breadcrumb-item" data-crumb="'+i+'">'+item+'</span>';
+    }
+  });
+  container.innerHTML = html;
+  // Re-bind
+  container.querySelectorAll('[data-crumb]').forEach(function(el){
+    el.addEventListener('click', function(){
+      const idx = parseInt(this.dataset.crumb);
+      state.crumbPath = state.crumbPath.slice(0, idx+1);
+      updateBreadcrumb();
+      showToast('导航到: '+state.crumbPath[idx]);
+      if(typeof lucide !== 'undefined') lucide.createIcons();
+    });
+  });
+  if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+function addCrumb(){
+  const extras = ['权限详情','操作记录','配置编辑','版本历史','关联分析'];
+  const next = extras[state.crumbPath.length-5] || '层级_'+(state.crumbPath.length-4);
+  state.crumbPath.push(next);
+  updateBreadcrumb();
+}
+function popCrumb(){
+  if(state.crumbPath.length > 1){ state.crumbPath.pop(); updateBreadcrumb(); }
+}
+function initBreadcrumb(){
+  const btnAdd = $('#btnAddCrumb');
+  const btnPop = $('#btnPopCrumb');
+  if(btnAdd) btnAdd.addEventListener('click', addCrumb);
+  if(btnPop) btnPop.addEventListener('click', popCrumb);
+  updateBreadcrumb();
+}
+
+// ====== CONTEXT MENU ======
+function initContextMenu(){
+  const trigger = $('#contextTrigger');
+  const menu = $('#contextMenu');
+  if(!trigger || !menu) return;
+  let longPressTimer;
+  trigger.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    showContextMenu(e.clientX, e.clientY);
+  });
+  trigger.addEventListener('touchstart', function(e){
+    longPressTimer = setTimeout(function(){
+      const touch = e.touches[0];
+      showContextMenu(touch.clientX, touch.clientY);
+    }, 600);
+  }, {passive:true});
+  trigger.addEventListener('touchend', function(){ clearTimeout(longPressTimer); });
+  trigger.addEventListener('touchmove', function(){ clearTimeout(longPressTimer); });
+  document.addEventListener('click', function(e){
+    if(!menu.contains(e.target) && e.target !== trigger){ menu.classList.remove('open'); }
+  });
+  menu.querySelectorAll('[data-ctx]').forEach(function(item){
+    item.addEventListener('click', function(){
+      showToast('上下文操作: '+this.dataset.ctx);
+      menu.classList.remove('open');
+    });
+  });
+}
+function showContextMenu(x, y){
+  const menu = $('#contextMenu');
+  menu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - 250) + 'px';
+  menu.classList.add('open');
+}
+
+// ====== SEARCH & FILTER ======
+function doSearch(){
+  const keyword = $('#searchInput').value.toLowerCase();
+  $$('#searchResultList .list-item').forEach(function(item){
+    const title = item.querySelector('.list-title').textContent.toLowerCase();
+    const desc = item.querySelector('.list-desc').textContent.toLowerCase();
+    const cat = item.dataset.category;
+    const matchKeyword = !keyword || title.includes(keyword) || desc.includes(keyword);
+    const matchFilter = state.currentFilter === 'all' || cat === state.currentFilter;
+    item.style.display = matchKeyword && matchFilter ? 'flex' : 'none';
+  });
+}
+function setFilter(filter){
+  state.currentFilter = filter;
+  $$('#filterChips .filter-chip').forEach(function(b){ b.classList.remove('active'); });
+  const activeBtn = Array.from($$('#filterChips .filter-chip')).find(function(b){ return b.dataset.filter === filter; });
+  if(activeBtn) activeBtn.classList.add('active');
+  doSearch();
+}
+function initSearch(){
+  const input = $('#searchInput');
+  if(input) input.addEventListener('input', doSearch);
+  $$('#filterChips .filter-chip').forEach(function(btn){
+    btn.addEventListener('click', function(){ setFilter(this.dataset.filter); });
+  });
+}
+
+// ====== TREE ======
+function initTree(){
+  $$('[data-tree-toggle]').forEach(function(header){
+    header.addEventListener('click', function(){
+      const node = header.closest('.tree-node');
+      node.classList.toggle('open');
+      const toggle = header.querySelector('.tree-toggle');
+      if(toggle) toggle.classList.toggle('open');
+    });
+  });
+}
+
+// ====== SWIPE ======
+function initSwipeGestures(){
+  $$('.swipe-content').forEach(function(el, index){
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+    el.addEventListener('touchstart', function(e){
+      startX = e.touches[0].clientX;
+      isDragging = true;
+      $$('.swipe-content.swiped').forEach(function(s, i){ if(i !== index) s.classList.remove('swiped'); });
+    }, {passive:true});
+    el.addEventListener('touchmove', function(e){
+      if(!isDragging) return;
+      currentX = e.touches[0].clientX;
+      const deltaX = currentX - startX;
+      if(deltaX < 0 && deltaX > -216){ el.style.transform = 'translateX('+deltaX+'px)'; }
+    }, {passive:true});
+    el.addEventListener('touchend', function(){
+      isDragging = false;
+      const deltaX = currentX - startX;
+      el.style.transform = '';
+      if(deltaX < -108){ el.classList.add('swiped'); state.swipeOpenIndex = index; }
+      else { el.classList.remove('swiped'); state.swipeOpenIndex = -1; }
+    });
+  });
+  $$('[data-swipe-action]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      const action = this.dataset.swipeAction;
+      const idx = this.dataset.swipeIndex;
+      showToast('滑动操作: '+action);
+      const content = $('[data-swipe="'+idx+'"]');
+      if(content) content.classList.remove('swiped');
+    });
+  });
+}
+
+
+// ====== SIDEBAR ======
+function toggleSidebar(){
+  state.sidebarExpanded = !state.sidebarExpanded;
+  $('#sidebarMini').classList.toggle('expanded', state.sidebarExpanded);
+}
+function initSidebar(){
+  const btn = $('#btnToggleSidebar');
+  if(btn) btn.addEventListener('click', toggleSidebar);
+  $$('[data-sb-select]').forEach(function(el){
+    el.addEventListener('click', function(){
+      $$('.sidebar-mini-item').forEach(function(i){ i.classList.remove('active'); });
+      this.classList.add('active');
+    });
+  });
+}
+
+// ====== HAMBURGER ======
+function initHamburger(){
+  $$('[data-ham]').forEach(function(el){
+    el.addEventListener('click', function(){ this.classList.toggle('active'); });
+  });
+}
+
+// ====== RADIAL MENU ======
+function initRadialMenu(){
+  const items = $$('.radial-item');
+  const radius = 82;
+  items.forEach(function(item, i){
+    const angle = (i * 72 - 90) * Math.PI / 180;
+    item.dataset.baseX = Math.cos(angle) * radius;
+    item.dataset.baseY = Math.sin(angle) * radius;
+  });
+  const btn = $('#btnRadial');
+  if(btn){
+    btn.addEventListener('click', function(){
+      state.radialOpen = !state.radialOpen;
+      $('#radialMenu').classList.toggle('open', state.radialOpen);
+      $$('.radial-item').forEach(function(item, i){
+        const bx = parseFloat(item.dataset.baseX || 0);
+        const by = parseFloat(item.dataset.baseY || 0);
+        if(state.radialOpen){
+          item.style.transform = 'translate(-50%,-50%) translate('+bx+'px,'+by+'px) scale(1)';
+          item.style.transitionDelay = (i * 0.05) + 's';
+        } else {
+          item.style.transform = 'translate(-50%,-50%) scale(0)';
+          item.style.transitionDelay = '0s';
+        }
+      });
+    });
+  }
+  $$('[data-radial]').forEach(function(item){
+    item.addEventListener('click', function(){
+      showToast('选择: '+this.dataset.radial);
+    });
+  });
+}
+
+// ====== SEGMENTED CONTROL ======
+function initSegmented(){
+  $$('[data-segment]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      const group = this.dataset.segment;
+      const parent = this.parentElement;
+      parent.querySelectorAll('.segment-btn').forEach(function(b){ b.classList.remove('active'); });
+      this.classList.add('active');
+      const text = this.textContent;
+      const content = segContents[text] || '已切换到: '+text;
+      const el = $('#segContent');
+      if(el) el.innerHTML = '<h3>当前视图: '+text+'</h3><p>'+content+'</p>';
+    });
+  });
+}
+
+// ====== NAVIGATION & EVENT DELEGATION ======
+function initNavigation(){
+  // Bottom nav
+  $$('.bottom-nav-item[data-page]').forEach(function(btn){
+    btn.addEventListener('click', function(){ navToPage(this.dataset.page); });
+  });
+  // Home grid
+  $$('#homeGrid .grid-item[data-page]').forEach(function(item){
+    item.addEventListener('click', function(){ navToPage(this.dataset.page); });
+  });
+  // More panel grid
+  $$('#morePanel .grid-item[data-nav]').forEach(function(item){
+    item.addEventListener('click', function(){ navToPage(this.dataset.nav); });
+  });
+  // Close more panel
+  const btnCloseMore = $('#btnCloseMore');
+  if(btnCloseMore){
+    btnCloseMore.addEventListener('click', function(){
+      $('#morePanel').classList.remove('open');
+      $$('.bottom-nav-item').forEach(function(btn){
+        btn.classList.toggle('active', btn.dataset.page === state.currentPage);
+      });
+    });
+  }
+  // Top nav buttons
+  const btnDrawer = $('#btnDrawer');
+  const btnFullscreen = $('#btnFullscreen');
+  const btnOpenDrawer = $('#btnOpenDrawer');
+  const btnOpenFullscreen = $('#btnOpenFullscreen');
+  const fsClose = $('#fsClose');
+  if(btnDrawer) btnDrawer.addEventListener('click', openDrawer);
+  if(btnFullscreen) btnFullscreen.addEventListener('click', openFullscreenMenu);
+  if(btnOpenDrawer) btnOpenDrawer.addEventListener('click', openDrawer);
+  if(btnOpenFullscreen) btnOpenFullscreen.addEventListener('click', openFullscreenMenu);
+  if(fsClose) fsClose.addEventListener('click', closeFullscreenMenu);
+  if($('#drawerOverlay')) $('#drawerOverlay').addEventListener('click', closeDrawer);
+  // FAB
+  const fabMain = $('#fabMain');
+  if(fabMain) fabMain.addEventListener('click', toggleFab);
+  $$('[data-fab]').forEach(function(item){
+    item.addEventListener('click', function(){
+      showToast('FAB操作: '+this.dataset.fab);
+      toggleFab();
+    });
+  });
+  // Toast triggers (data-toast)
+  document.addEventListener('click', function(e){
+    const toastTrigger = e.target.closest('[data-toast]');
+    if(toastTrigger){ showToast(toastTrigger.dataset.toast); }
+  });
+}
+
+// ====== KEYBOARD ======
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    closeDrawer();
+    closeFullscreenMenu();
+    closeAllDropdowns();
+    const ctx = $('#contextMenu');
+    if(ctx) ctx.classList.remove('open');
+    if(state.fabOpen) toggleFab();
+  }
+});
+
+// ====== GLOBAL CLICK ======
+document.addEventListener('click', function(e){
+  if(state.activeDropdown && !e.target.closest('.dropdown-wrapper')){ closeAllDropdowns(); }
+  if(state.fabOpen && !e.target.closest('.fab-container')){ toggleFab(); }
+});
+
+// ====== INIT ======
+document.addEventListener('DOMContentLoaded', function(){
+  initDrawerMenu();
+  initFullscreenMenu();
+  initAccordion();
+  initTabs();
+  initDropdowns();
+  initStepper();
+  initBreadcrumb();
+  initContextMenu();
+  initSearch();
+  initTree();
+  initSwipeGestures();
+  initSidebar();
+  initHamburger();
+  initRadialMenu();
+  initSegmented();
+  initNavigation();
+  updateTime();
+  setInterval(updateTime, 1000);
+  // Init Lucide icons
+  if(typeof lucide !== 'undefined'){ lucide.createIcons(); }
+});
+</script>
+</body>
+</html>
