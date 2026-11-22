@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gate Studio &middot; v1.33.0</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg-dark: #0d1117;
+  --bg-surface: #161b22;
+  --bg-card: #21262d;
+  --border: rgba(240,246,252,0.1);
+  --border-hover: rgba(240,246,252,0.25);
+  --accent: #58a6ff;
+  --accent-glow: rgba(88,166,255,0.15);
+  --text-main: #c9d1d9;
+  --text-muted: #8b949e;
+  --success: #3fb950;
+  --danger: #f85149;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Josefin Sans', -apple-system, sans-serif;
+  font-size: 12px;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+
+/* 极简顶栏 */
+.toolbar {
+  position: fixed; top: 12px; left: 12px; display: flex; gap: 4px;
+  background: rgba(22,27,34,0.9); backdrop-filter: blur(12px);
+  border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px;
+  z-index: 100; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); flex-wrap: wrap;
+}
+.btn {
+  background: transparent; border: 1px solid transparent; color: var(--text-muted);
+  padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500;
+  transition: all 0.15s; display: flex; align-items: center; gap: 4px;
+}
+.btn:hover { background: rgba(255,255,255,0.06); color: var(--text-main); border-color: var(--border); }
+.btn.active { color: var(--accent); border-color: rgba(88,166,255,0.3); background: var(--accent-glow); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-danger:hover { color: var(--danger); border-color: rgba(248,81,73,0.3); }
+.separator { width: 1px; height: 14px; background: var(--border); margin: 0 2px; }
+
+/* 运行频率精细控制区 */
+.speed-control { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
+.speed-control input[type="range"] { width: 50px; height: 4px; accent-color: var(--accent); cursor: pointer; }
+.speed-control input[type="tel"] {
+  width: 36px; background: var(--bg-card); border: 1px solid var(--border);
+  color: var(--text-main); text-align: center; border-radius: 3px; font-size: 10px; padding: 2px;
+  outline: none; -webkit-appearance: none;
+}
+
+/* 侧边栏面板 */
+.ui-panel {
+  position: fixed; top: 64px; right: 12px; width: 140px; max-height: calc(100vh - 80px);
+  background: rgba(22,27,34,0.95); backdrop-filter: blur(16px);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px;
+  z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+  transition: transform 0.3s, opacity 0.3s;
+}
+.ui-panel.collapsed { transform: translateX(calc(100% + 24px)); opacity: 0; pointer-events: none; }
+.ui-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-main); font-size: 10px; }
+.ui-toggle-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; }
+.ui-toggle-btn:hover { color: var(--text-main); }
+.ui-expand-btn {
+  position: fixed; top: 64px; right: 12px; width: 32px; height: 32px;
+  background: rgba(22,27,34,0.95); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-muted); font-size: 14px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 101; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.ui-expand-btn.visible { opacity: 1; pointer-events: auto; }
+.ui-expand-btn:hover { color: var(--text-main); }
+
+.category-title { font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin: 6px 0 2px 0; font-weight: 600; }
+.component-grid { display: flex; flex-direction: column; gap: 3px; }
+.comp-item {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+  padding: 5px 6px; text-align: left; cursor: pointer; font-size: 10px; color: var(--text-muted);
+  transition: all 0.15s; display: flex; align-items: center; justify-content: space-between;
+}
+.comp-item:hover { border-color: var(--accent); color: var(--text-main); background: var(--accent-glow); }
+.comp-icon { font-weight: bold; font-size: 10px; color: var(--accent); }
+
+/* 底部波形分析面板 */
+.waveform-panel {
+  position: fixed; bottom: 12px; right: 12px; left: 160px; height: 160px; min-height: 80px; max-height: 85vh;
+  background: rgba(22,27,34,0.95); backdrop-filter: blur(16px);
+  border: 1px solid var(--border); border-radius: 8px; z-index: 85;
+  display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  transition: transform 0.3s; overflow: hidden;
+}
+.waveform-panel.collapsed { transform: translateY(calc(100% + 24px)); }
+.waveform-resize-handle { height: 6px; background: rgba(255,255,255,0.04); cursor: ns-resize; width: 100%; transition: background 0.2s; }
+.waveform-resize-handle:hover { background: var(--accent); }
+.waveform-header { padding: 4px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); font-size: 10px; color: var(--text-muted); }
+.waveform-body { flex: 1; position: relative; overflow: hidden; }
+#waveform-canvas { width: 100%; height: 100%; display: block; }
+
+/* 帮助文档与引脚定义弹窗 */
+.help-modal .modal { width: 620px; max-height: 88vh; }
+.help-content { font-size: 11px; line-height: 1.6; color: var(--text-main); display: flex; flex-direction: column; gap: 12px; max-height: 72vh; overflow-y: auto; padding-right: 6px; }
+.help-content::-webkit-scrollbar { width: 4px; }
+.help-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.help-content h4 { color: var(--accent); margin-top: 6px; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
+.pin-def-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10px; }
+.pin-def-table th, .pin-def-table td { border: 1px solid var(--border); padding: 5px; text-align: left; }
+.pin-def-table th { background: var(--bg-card); color: var(--accent); }
+
+/* 真值表弹窗表格样式 */
+.truthtable-modal .modal { width: 480px; max-height: 80vh; }
+.tt-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; text-align: center; }
+.tt-table th, .tt-table td { border: 1px solid var(--border); padding: 6px; }
+.tt-table th { background: var(--bg-card); color: var(--accent); }
+.tt-table tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+/* 微型悬浮上下文菜单 */
+.context-menu {
+  position: fixed; background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px; display: flex; gap: 4px; z-index: 2000;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.15s;
+}
+.context-menu.show { opacity: 1; pointer-events: auto; }
+.ctx-btn {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main);
+  padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; transition: all 0.15s;
+}
+.ctx-btn:hover { border-color: var(--accent); background: var(--accent-glow); }
+.ctx-btn.danger:hover { border-color: var(--danger); background: rgba(248,81,73,0.15); color: var(--danger); }
+
+/* 模态框 */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.modal-overlay.show { opacity: 1; pointer-events: auto; }
+.modal { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; width: 400px; max-width: 90vw; box-shadow: 0 16px 48px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; }
+.modal-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); }
+.modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+.modal-close:hover { color: var(--text-main); }
+.modal-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.example-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; cursor: pointer; transition: all 0.15s; }
+.example-card:hover { border-color: var(--accent); }
+.example-title { font-weight: 600; font-size: 11px; color: var(--accent); margin-bottom: 2px; }
+.example-desc { font-size: 10px; color: var(--text-muted); }
+
+@media(max-width:768px){
+.waveform-panel{left:12px;right:12px;height:120px}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+    <button class="btn active" id="btn-run" title="运行"><span id="run-icon">暂停</span></button>
+    <button class="btn" id="btn-step" title="单步">单步</button>
+    <div class="separator"></div>
+    <button class="btn" id="btn-undo" title="撤销 (Ctrl+Z)" disabled>↶ 撤销</button>
+    <button class="btn" id="btn-redo" title="恢复 (Ctrl+Y)" disabled>↷ 恢复</button>
+    <div class="separator"></div>
+    <div class="speed-control">
+        <span>频率:</span>
+        <input type="range" id="sim-speed-range" min="1" max="50" value="10">
+        <input type="tel" id="sim-speed-input" value="10">
+    </div>
+    <div class="separator"></div>
+    <button class="btn" id="btn-truthtable" title="真值表生成">真值表</button>
+    <button class="btn" id="btn-subcircuit" title="封装子电路">封装</button>
+    <button class="btn" id="btn-help" title="全部组件与引脚说明">帮助</button>
+    <button class="btn" id="btn-examples" title="示例">示例</button>
+    <button class="btn btn-danger" id="btn-clear" title="清空">清空</button>
+    <div class="separator"></div>
+    <button class="btn" id="btn-save" title="保存">保存</button>
+    <button class="btn" id="btn-export" title="导出文件">导出</button>
+    <button class="btn" id="btn-import" title="导入文件">导入</button>
+    <input type="file" id="file-input" style="display: none;" accept=".json">
+    <div class="separator"></div>
+    <button class="btn" id="btn-waveform-toggle" title="波形面板">波形</button>
+</div>
+
+<!-- 帮助弹窗 -->
+<div class="modal-overlay help-modal" id="help-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Gate Studio &middot; 全部组件与引脚定义大全</span>
+            <button class="modal-close" id="help-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="help-content">
+                <h4>一、核心快捷与交互功能</h4>
+                <ul>
+                    <li><b>撤销/恢复 (Undo/Redo)</b>：支持通过顶栏按钮或键盘快捷键 `Ctrl+Z` / `Ctrl+Y` 对画布操作进行无限步撤销与恢复。</li>
+                    <li><b>数据导入/导出 (toBlob + ObjectURL)</b>：使用 Blob 与对象 URL 完美支持各主流浏览器的安全下载导出。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 真值表弹窗 -->
+<div class="modal-overlay truthtable-modal" id="truthtable-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span>电路真值表自动生成器</span>
+            <button class="modal-close" id="tt-modal-close">&times;</button>
+        </div>
+        <div class="modal-body" id="tt-modal-body">
+            <p style="color:var(--text-muted); font-size:11px;">系统将自动检测画布中的开关(SWITCH)作为输入、灯(LED)或波形接收机作为输出，并穷举所有输入组合生成真值表。</p>
+            <div id="tt-table-container"></div>
+        </div>
+    </div>
+</div>
+
+<div class="context-menu" id="contextMenu">
+    <button class="ctx-btn" id="ctxBtnRename" style="display:none;">重命名</button>
+    <button class="ctx-btn" id="ctxBtnFreq" style="display:none;">设置频率</button>
+    <button class="ctx-btn danger" id="ctxBtnDelete">删除</button>
+</div>
+
+<div class="ui-panel" id="uiPanel">
+    <div class="ui-header">
+        <span>组件库</span>
+        <button class="ui-toggle-btn" id="collapseBtn">✕</button>
+    </div>
+    <div id="sidebar-content" style="overflow-y:auto; max-height:calc(80vh - 40px)"></div>
+</div>
+<div class="ui-expand-btn" id="expandBtn">☰</div>
+
+<canvas id="canvas"></canvas>
+
+<!-- 底部波形分析面板 -->
+<div class="waveform-panel" id="waveform-panel">
+    <div class="waveform-resize-handle" id="waveformResizeHandle"></div>
+    <div class="waveform-header">
+        <span>时序波形分析仪 (多路实时分轨监控)</span>
+        <button class="btn" style="padding: 1px 6px; font-size: 9px;" id="btn-clear-wave">清空波形</button>
+    </div>
+    <div class="waveform-body">
+        <canvas id="waveform-canvas"></canvas>
+    </div>
+</div>
+
+<div class="modal-overlay" id="examples-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span>示例电路</span>
+            <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="modal-body" id="examples-list"></div>
+    </div>
+</div>
+
+<script>
+/**
+ * Gate Studio v1.33.0
+ * 修复：采用标准的 Blob + URL.createObjectURL + 动态创建链接并点击触发下载的方式，解决部分移动端/沙箱环境无法导出的问题。
+ */
+
+const OR_START_X = 5;
+const OR_OFFSET_Y = 12;
+
+const COMPONENT_TYPES = {
+    SWITCH: { type: 'SWITCH', name: '开关', category: '输入输出', inputs: 0, outputs: 1, w: 55, h: 40, shape: 'io' },
+    BUTTON: { type: 'BUTTON', name: '按钮', category: '输入输出', inputs: 0, outputs: 1, w: 55, h: 40, shape: 'io' },
+    CLOCK: { type: 'CLOCK', name: '时钟', category: '输入输出', inputs: 0, outputs: 1, w: 55, h: 40, shape: 'io' },
+    CONSTANT: { type: 'CONSTANT', name: '常数', category: '输入输出', inputs: 0, outputs: 1, w: 45, h: 35, shape: 'io' },
+    LED: { type: 'LED', name: '灯', category: '输入输出', inputs: 1, outputs: 0, w: 40, h: 40, shape: 'io' },
+    SEVEN_SEG: { type: 'SEVEN_SEG', name: '数码管', category: '输入输出', inputs: 4, outputs: 0, w: 60, h: 90, shape: 'io' },
+    LCD_DISPLAY: { type: 'LCD_DISPLAY', name: '多功能显示屏', category: '输入输出', inputs: 8, outputs: 0, w: 80, h: 100, shape: 'io' },
+    MATRIX_16: { type: 'MATRIX_16', name: '16x16点阵屏', category: '输入输出', inputs: 4, outputs: 0, w: 90, h: 90, shape: 'io' },
+    PIXEL_256_128: { type: 'PIXEL_256_128', name: '256x128像素屏', category: '输入输出', inputs: 4, outputs: 0, w: 120, h: 80, shape: 'io' },
+    BUZZER: { type: 'BUZZER', name: '蜂鸣器', category: '输入输出', inputs: 1, outputs: 0, w: 40, h: 40, shape: 'io' },
+    WAVE_RECORDER: { type: 'WAVE_RECORDER', name: '波形接收机', category: '输入输出', inputs: 1, outputs: 0, w: 65, h: 40, shape: 'io' },
+    
+    SUB_IN: { type: 'SUB_IN', name: '子电路输入', category: '输入输出', inputs: 0, outputs: 1, w: 50, h: 35, shape: 'io' },
+    SUB_OUT: { type: 'SUB_OUT', name: '子电路输出', category: '输入输出', inputs: 1, outputs: 0, w: 50, h: 35, shape: 'io' },
+
+    AND: { type: 'AND', name: 'AND', category: '逻辑门', inputs: 2, outputs: 1, w: 75, h: 55, shape: 'gate', gateType: 'AND' },
+    OR: { type: 'OR', name: 'OR', category: '逻辑门', inputs: 2, outputs: 1, w: 75, h: 55, shape: 'gate', gateType: 'OR' },
+    NOT: { type: 'NOT', name: 'NOT', category: '逻辑门', inputs: 1, outputs: 1, w: 65, h: 45, shape: 'gate', gateType: 'NOT' },
+    XOR: { type: 'XOR', name: 'XOR', category: '逻辑门', inputs: 2, outputs: 1, w: 75, h: 55, shape: 'gate', gateType: 'XOR' },
+    NAND: { type: 'NAND', name: 'NAND', category: '逻辑门', inputs: 2, outputs: 1, w: 80, h: 55, shape: 'gate', gateType: 'NAND' },
+    NOR: { type: 'NOR', name: 'NOR', category: '逻辑门', inputs: 2, outputs: 1, w: 80, h: 55, shape: 'gate', gateType: 'NOR' },
+
+    REG: { type: 'REG', name: '寄存器 (REG)', category: '高级时序元件', inputs: 2, outputs: 1, w: 70, h: 60, shape: 'box' },
+    MUX: { type: 'MUX', name: '多路选择器(MUX)', category: '高级时序元件', inputs: 3, outputs: 1, w: 75, h: 70, shape: 'box' },
+    RAM: { type: 'RAM', name: 'RAM单元', category: '高级时序元件', inputs: 3, outputs: 1, w: 75, h: 80, shape: 'box' },
+
+    SR_LATCH: { type: 'SR_LATCH', name: 'SR', category: '时序组合', inputs: 2, outputs: 2, w: 70, h: 60, shape: 'box' },
+    D_FF: { type: 'D_FF', name: 'D触发', category: '时序组合', inputs: 2, outputs: 2, w: 70, h: 60, shape: 'box' },
+    JK_FF: { type: 'JK_FF', name: 'JK触发', category: '时序组合', inputs: 3, outputs: 2, w: 70, h: 75, shape: 'box' },
+    HALF_ADDER: { type: 'HALF_ADDER', name: '半加器', category: '时序组合', inputs: 2, outputs: 2, w: 70, h: 60, shape: 'box' },
+    FULL_ADDER: { type: 'FULL_ADDER', name: '全加器', category: '时序组合', inputs: 3, outputs: 2, w: 70, h: 80, shape: 'box' }
+};
+
+let customSubcircuits = {};
+
+let undoStack = [];
+let redoStack = [];
+const MAX_HISTORY = 40;
+
+function pushState() {
+    const json = JSON.stringify(serialize());
+    if (undoStack.length > 0 && undoStack[undoStack.length - 1] === json) return;
+    undoStack.push(json);
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack = [];
+    updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+    document.getElementById('btn-undo').disabled = undoStack.length <= 1;
+    document.getElementById('btn-redo').disabled = redoStack.length === 0;
+}
+
+document.getElementById('btn-undo').onclick = () => {
+    if (undoStack.length <= 1) return;
+    const currentState = undoStack.pop();
+    redoStack.push(currentState);
+    const prevState = undoStack[undoStack.length - 1];
+    deserialize(JSON.parse(prevState), false);
+    updateUndoRedoButtons();
+};
+
+document.getElementById('btn-redo').onclick = () => {
+    if (redoStack.length === 0) return;
+    const nextState = redoStack.pop();
+    undoStack.push(nextState);
+    deserialize(JSON.parse(nextState), false);
+    updateUndoRedoButtons();
+};
+
+window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) document.getElementById('btn-redo').click();
+        else document.getElementById('btn-undo').click();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        document.getElementById('btn-redo').click();
+    }
+});
+
+const C = document.getElementById('canvas'), X = C.getContext('2d');
+let W, H;
+let V = { x: 0, y: 0, zoom: 1, minZoom: 0.1, maxZoom: 10.0 };
+
+let components = [];
+let wires = [];
+let isRunning = true;
+let simSpeed = 10;
+let frameCount = 0;
+
+let waveformHistory = [];
+const MAX_WAVEFORM_STEPS = 150;
+
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let touchStartCenter = { x: 0, y: 0 };
+let touchStartPan = { x: 0, y: 0 };
+let pinchStartDist = 0;
+let pinchStartZoom = 1;
+
+let selectedComponent = null;
+let hoveredPin = null;
+let connectingPin = null;
+let currentMouseX = 0, currentMouseY = 0;
+
+const speedRange = document.getElementById('sim-speed-range');
+const speedInput = document.getElementById('sim-speed-input');
+
+speedRange.oninput = (e) => {
+    simSpeed = parseInt(e.target.value);
+    speedInput.value = simSpeed;
+};
+speedInput.oninput = (e) => {
+    let v = parseInt(e.target.value);
+    if (!isNaN(v)) {
+        simSpeed = Math.max(1, Math.min(100, v));
+        speedRange.value = simSpeed;
+    }
+};
+
+function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    W = innerWidth; H = innerHeight;
+    C.width = W * dpr; C.height = H * dpr;
+    X.setTransform(dpr, 0, 0, dpr, 0, 0);
+    X.imageSmoothingEnabled = true;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function screenToWorld(sx, sy) {
+    const cx = W / 2, cy = H / 2;
+    return { x: (sx - cx) / V.zoom + V.x, y: (sy - cy) / V.zoom + V.y };
+}
+
+class Pin {
+    constructor(component, type, index) {
+        this.component = component; this.type = type; this.index = index;
+        this.value = 0; this.x = 0; this.y = 0;
+    }
+    updatePosition() {
+        const c = this.component;
+        if (c.shape === 'gate') {
+            if (this.type === 'in') {
+                this.x = c.x;
+                if (c.gateType === 'NOT') {
+                    this.y = c.y + c.h / 2;
+                } else if (c.gateType === 'OR' || c.gateType === 'NOR' || c.gateType === 'XOR') {
+                    this.y = c.y + c.h / 2 + (this.index === 0 ? -OR_OFFSET_Y : OR_OFFSET_Y);
+                } else {
+                    const unitH = c.h / 4;
+                    this.y = c.y + (this.index === 0 ? c.h / 2 - unitH : c.h / 2 + unitH);
+                }
+            } else {
+                this.x = c.x + c.w;
+                this.y = c.y + c.h / 2;
+            }
+        } else {
+            const count = (this.type === 'in' ? c.inputs : c.outputs).length;
+            const spacing = c.h / (count + 1);
+            if (this.type === 'in') {
+                this.x = c.x; this.y = c.y + spacing * (this.index + 1);
+            } else {
+                this.x = c.x + c.w; this.y = c.y + spacing * (this.index + 1);
+            }
+        }
+    }
+}
+
+class Component {
+    constructor(type, x, y, id = null, customNames = null) {
+        this.id = id || Math.random().toString(36).substring(2, 9);
+        this.type = type;
+        
+        let def = COMPONENT_TYPES[type];
+        if (!def && customSubcircuits[type]) {
+            def = customSubcircuits[type];
+        }
+
+        this.name = def.name; this.x = x; this.y = y; this.w = def.w; this.h = def.h; 
+        this.shape = def.shape; this.gateType = def.gateType;
+        this.customName = type === 'WAVE_RECORDER' ? ('REC#' + this.id.substring(0,3)) : (type === 'SUB_IN' ? 'IN' : (type === 'SUB_OUT' ? 'OUT' : def.name));
+        
+        this.pinNamesIn = customNames ? customNames.in : (customSubcircuits[type] ? customSubcircuits[type].pinNamesIn : []);
+        this.pinNamesOut = customNames ? customNames.out : (customSubcircuits[type] ? customSubcircuits[type].pinNamesOut : []);
+
+        this.inputs = []; for (let i = 0; i < def.inputs; i++) this.inputs.push(new Pin(this, 'in', i));
+        this.outputs = []; for (let i = 0; i < def.outputs; i++) this.outputs.push(new Pin(this, 'out', i));
+        
+        if (customSubcircuits[type]) {
+            const sub = customSubcircuits[type];
+            this.runtimeComponents = sub.componentsData.map(cd => {
+                const comp = new Component(cd.type, cd.x, cd.y, cd.id, { in: cd.pinNamesIn, out: cd.pinNamesOut });
+                comp.state = JSON.parse(JSON.stringify(cd.state || comp.state));
+                comp.customName = cd.customName;
+                return comp;
+            });
+            this.runtimeWires = sub.wiresData.map(wd => {
+                const fc = this.runtimeComponents.find(c => c.id === wd.fromCompId);
+                const tc = this.runtimeComponents.find(c => c.id === wd.toCompId);
+                if (fc && tc) {
+                    const fp = fc.outputs[wd.fromPinIndex];
+                    const tp = tc.inputs[wd.toPinIndex];
+                    if (fp && tp) return new Wire(fp, tp);
+                }
+                return null;
+            }).filter(Boolean);
+        }
+
+        this.state = { switchState: 0, clockCounter: 0, clockInterval: 30, constantValue: 1, q: 0, lastClock: 0, ramData: {} };
+        this.updatePins();
+    }
+    updatePins() {
+        this.inputs.forEach(p => p.updatePosition());
+        this.outputs.forEach(p => p.updatePosition());
+    }
+    evaluate() {
+        if (customSubcircuits[this.type] && this.runtimeComponents && this.runtimeWires) {
+            let subIns = this.runtimeComponents.filter(c => c.type === 'SUB_IN');
+            this.inputs.forEach((pin, idx) => {
+                if (subIns[idx]) {
+                    subIns[idx].state.switchState = pin.value;
+                    subIns[idx].outputs[0].value = pin.value;
+                }
+            });
+
+            for (let iter = 0; iter < 4; iter++) {
+                const inputMap = new Map();
+                this.runtimeWires.forEach(w => {
+                    if (!w.toPin) return;
+                    if (!inputMap.has(w.toPin)) inputMap.set(w.toPin, []);
+                    inputMap.get(w.toPin).push(w.fromPin.value);
+                });
+                inputMap.forEach((vals, pin) => {
+                    pin.value = vals.some(v => v === 1) ? 1 : 0;
+                });
+                this.runtimeWires.forEach(w => {
+                    if (w.fromPin && w.toPin && !inputMap.has(w.toPin)) {
+                        w.toPin.value = w.fromPin.value;
+                    }
+                });
+                this.runtimeComponents.forEach(c => c.evaluate());
+            }
+
+            let subOuts = this.runtimeComponents.filter(c => c.type === 'SUB_OUT');
+            this.outputs.forEach((pin, idx) => {
+                if (subOuts[idx] && subOuts[idx].inputs[0]) {
+                    pin.value = subOuts[idx].inputs[0].value;
+                }
+            });
+            return;
+        }
+
+        switch (this.type) {
+            case 'SWITCH': this.outputs[0].value = this.state.switchState; break;
+            case 'SUB_IN': this.outputs[0].value = this.state.switchState; break;
+            case 'SUB_OUT': break;
+            case 'REG': {
+                const d = this.inputs[0].value;
+                const clk = this.inputs[1].value;
+                if (clk === 1 && this.state.lastClock === 0) {
+                    this.state.q = d;
+                }
+                this.state.lastClock = clk;
+                this.outputs[0].value = this.state.q;
+                break;
+            }
+            case 'MUX': {
+                const in0 = this.inputs[0].value;
+                const in1 = this.inputs[1].value;
+                const sel = this.inputs[2].value;
+                this.outputs[0].value = sel === 1 ? in1 : in0;
+                break;
+            }
+            case 'RAM': {
+                const dataIn = this.inputs[0].value;
+                const addr = this.inputs[1].value;
+                const we = this.inputs[2].value;
+                if (we === 1) {
+                    this.state.ramData[addr] = dataIn;
+                }
+                this.outputs[0].value = this.state.ramData[addr] || 0;
+                break;
+            }
+            case 'CLOCK':
+                this.state.clockCounter++;
+                if (this.state.clockCounter >= this.state.clockInterval) {
+                    this.state.clockCounter = 0; this.state.switchState = this.state.switchState ? 0 : 1;
+                }
+                this.outputs[0].value = this.state.switchState; break;
+            case 'CONSTANT': this.outputs[0].value = this.state.constantValue; break;
+            case 'AND': this.outputs[0].value = this.inputs.every(p => p.value === 1) ? 1 : 0; break;
+            case 'OR': this.outputs[0].value = this.inputs.some(p => p.value === 1) ? 1 : 0; break;
+            case 'NOT': this.outputs[0].value = this.inputs[0].value === 1 ? 0 : 1; break;
+            case 'XOR': this.outputs[0].value = (this.inputs[0].value !== this.inputs[1].value) ? 1 : 0; break;
+            case 'NAND': this.outputs[0].value = this.inputs.every(p => p.value === 1) ? 0 : 1; break;
+            case 'NOR': this.outputs[0].value = this.inputs.some(p => p.value === 1) ? 0 : 1; break;
+            case 'SR_LATCH': {
+                const s = this.inputs[0].value, r = this.inputs[1].value;
+                if (s === 1 && r === 0) this.state.q = 1;
+                else if (s === 0 && r === 1) this.state.q = 0;
+                else if (s === 1 && r === 1) this.state.q = 0;
+                this.outputs[0].value = this.state.q; this.outputs[1].value = this.state.q ? 0 : 1; break;
+            }
+            case 'D_FF': {
+                const d = this.inputs[0].value, clk = this.inputs[1].value;
+                if (clk === 1 && this.state.lastClock === 0) this.state.q = d;
+                this.state.lastClock = clk;
+                this.outputs[0].value = this.state.q; this.outputs[1].value = this.state.q ? 0 : 1; break;
+            }
+            case 'JK_FF': {
+                const j = this.inputs[0].value, clk = this.inputs[1].value, k = this.inputs[2].value;
+                if (clk === 1 && this.state.lastClock === 0) {
+                    if (j === 0 && k === 1) this.state.q = 0;
+                    else if (j === 1 && k === 0) this.state.q = 1;
+                    else if (j === 1 && k === 1) this.state.q = this.state.q ? 0 : 1;
+                }
+                this.state.lastClock = clk;
+                this.outputs[0].value = this.state.q; this.outputs[1].value = this.state.q ? 0 : 1; break;
+            }
+            case 'HALF_ADDER': {
+                const a = this.inputs[0].value, b = this.inputs[1].value;
+                this.outputs[0].value = (a !== b) ? 1 : 0; this.outputs[1].value = (a === 1 && b === 1) ? 1 : 0; break;
+            }
+            case 'FULL_ADDER': {
+                const a = this.inputs[0].value, b = this.inputs[1].value, cin = this.inputs[2].value;
+                this.outputs[0].value = (a ^ b ^ cin); this.outputs[1].value = (a & b) | (cin & (a ^ b)); break;
+            }
+        }
+    }
+    contains(x, y) { return x >= this.x && x <= this.x + this.w && y >= this.y && y <= this.y + this.h; }
+}
+
+class Wire {
+    constructor(fromPin, toPin) { this.fromPin = fromPin; this.toPin = toPin; }
+}
+
+function initSidebar() {
+    const container = document.getElementById('sidebar-content');
+    container.innerHTML = '';
+    const categories = {};
+    for (let k in COMPONENT_TYPES) {
+        let def = COMPONENT_TYPES[k];
+        if (!categories[def.category]) categories[def.category] = [];
+        categories[def.category].push(def);
+    }
+    for (let k in customSubcircuits) {
+        let def = customSubcircuits[k];
+        if (!categories[def.category]) categories[def.category] = [];
+        categories[def.category].push(def);
+    }
+
+    for (let cat in categories) {
+        let div = document.createElement('div');
+        div.innerHTML = `<div class="category-title">${cat}</div>`;
+        let grid = document.createElement('div'); grid.className = 'component-grid';
+        categories[cat].forEach(def => {
+            let item = document.createElement('div');
+            item.className = 'comp-item';
+            item.innerHTML = `<span>${def.name}</span><span class="comp-icon">+</span>`;
+            item.onclick = (e) => {
+                e.stopPropagation();
+                const comp = new Component(def.type, V.x - def.w/2, V.y - def.h/2);
+                components.push(comp);
+                pushState();
+            };
+            grid.appendChild(item);
+        });
+        div.appendChild(grid); container.appendChild(div);
+    }
+}
+initSidebar();
+
+document.getElementById('btn-subcircuit').onclick = () => {
+    if (components.length === 0) {
+        alert('当前画布没有组件可供封装！');
+        return;
+    }
+    const name = prompt('请输入自定义子电路名称 (例如: MY_ADDER):', 'MY_CHIP');
+    if (!name) return;
+    const key = name.trim().toUpperCase();
+    
+    const subIns = components.filter(c => c.type === 'SUB_IN');
+    const subOuts = components.filter(c => c.type === 'SUB_OUT');
+    
+    const pinNamesIn = subIns.map(c => c.customName);
+    const pinNamesOut = subOuts.map(c => c.customName);
+
+    const inputsCount = Math.max(1, subIns.length);
+    const outputsCount = Math.max(1, subOuts.length);
+    const maxPins = Math.max(inputsCount, outputsCount);
+    const boxHeight = Math.max(55, maxPins * 25 + 15);
+
+    const componentsData = components.map(c => ({
+        id: c.id, type: c.type, x: c.x, y: c.y, state: JSON.parse(JSON.stringify(c.state)), customName: c.customName,
+        pinNamesIn: c.pinNamesIn, pinNamesOut: c.pinNamesOut
+    }));
+    const wiresData = wires.map(w => ({
+        fromCompId: w.fromPin.component.id, fromPinIndex: w.fromPin.index,
+        toCompId: w.toPin.component.id, toPinIndex: w.toPin.index
+    }));
+
+    customSubcircuits[key] = {
+        type: key, name: key, category: '自定义模块',
+        inputs: inputsCount, outputs: outputsCount, w: 85, h: boxHeight, shape: 'subcircuit',
+        pinNamesIn: pinNamesIn, pinNamesOut: pinNamesOut,
+        componentsData: componentsData, wiresData: wiresData
+    };
+
+    initSidebar();
+    alert(`成功封装子电路 [${key}]！`);
+};
+
+document.getElementById('btn-truthtable').onclick = () => {
+    const switches = components.filter(c => c.type === 'SWITCH' || c.type === 'SUB_IN');
+    const outputs = components.filter(c => c.type === 'LED' || c.type === 'WAVE_RECORDER' || c.type === 'SUB_OUT');
+
+    if (switches.length === 0 || outputs.length === 0) {
+        alert('请确保画布中至少包含一个输入和一个输出！');
+        return;
+    }
+    if (switches.length > 4) {
+        alert('输入端超过4个，组合数过多。');
+        return;
+    }
+
+    const inputNames = switches.map(s => s.customName || 'IN');
+    const outputNames = outputs.map(o => o.customName || 'OUT');
+
+    const savedStates = switches.map(s => s.state.switchState);
+    const rows = [];
+    const totalCombos = 1 << switches.length;
+
+    for (let i = 0; i < totalCombos; i++) {
+        for (let j = 0; j < switches.length; j++) {
+            const val = (i >> (switches.length - 1 - j)) & 1;
+            switches[j].state.switchState = val;
+            switches[j].outputs[0].value = val;
+        }
+
+        for (let step = 0; step < 5; step++) {
+            const inputMap = new Map();
+            wires.forEach(w => {
+                if (!w.toPin) return;
+                if (!inputMap.has(w.toPin)) inputMap.set(w.toPin, []);
+                inputMap.get(w.toPin).push(w.fromPin.value);
+            });
+            inputMap.forEach((vals, pin) => {
+                pin.value = vals.some(v => v === 1) ? 1 : 0;
+            });
+            wires.forEach(w => {
+                if (w.fromPin && w.toPin && !inputMap.has(w.toPin)) {
+                    w.toPin.value = w.fromPin.value;
+                }
+            });
+            components.forEach(c => c.evaluate());
+        }
+
+        const outVals = outputs.map(o => (o.inputs[0] ? o.inputs[0].value : 0));
+        const inVals = switches.map(s => s.state.switchState);
+        rows.push({ inVals, outVals });
+    }
+
+    for (let j = 0; j < switches.length; j++) {
+        switches[j].state.switchState = savedStates[j];
+        switches[j].outputs[0].value = savedStates[j];
+    }
+
+    let html = `<table class="tt-table"><thead><tr>`;
+    inputNames.forEach(n => html += `<th>${n}</th>`);
+    outputNames.forEach(n => html += `<th>${n} (OUT)</th>`);
+    html += `</tr></thead><tbody>`;
+
+    rows.forEach(r => {
+        html += `<tr>`;
+        r.inVals.forEach(v => html += `<td>${v}</td>`);
+        r.outVals.forEach(v => html += `<td style="color:${v===1?'var(--success)':'var(--text-muted)'}; font-weight:bold;">${v}</td>`);
+        html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+
+    document.getElementById('tt-table-container').innerHTML = html;
+    document.getElementById('truthtable-modal').classList.add('show');
+};
+
+document.getElementById('tt-modal-close').onclick = () => {
+    document.getElementById('truthtable-modal').classList.remove('show');
+};
+
+document.getElementById('btn-help').onclick = () => {
+    document.getElementById('help-modal').classList.add('show');
+};
+document.getElementById('help-modal-close').onclick = () => {
+    document.getElementById('help-modal').classList.remove('show');
+};
+
+function stepSimulation() {
+    const inputMap = new Map();
+    wires.forEach(w => {
+        if (!w.toPin) return;
+        if (!inputMap.has(w.toPin)) inputMap.set(w.toPin, []);
+        inputMap.get(w.toPin).push(w.fromPin.value);
+    });
+    inputMap.forEach((vals, pin) => {
+        pin.value = vals.some(v => v === 1) ? 1 : 0;
+    });
+
+    wires.forEach(w => {
+        if (w.fromPin && w.toPin && !inputMap.has(w.toPin)) {
+            w.toPin.value = w.fromPin.value;
+        }
+    });
+
+    components.forEach(c => c.evaluate());
+    recordWaveforms();
+}
+
+function recordWaveforms() {
+    if (!isRunning && frameCount % 5 !== 0) return;
+    const recorders = components.filter(c => c.type === 'WAVE_RECORDER');
+    const snapshot = recorders.map(rec => ({
+        id: rec.id,
+        name: rec.customName,
+        value: rec.inputs[0] ? rec.inputs[0].value : 0
+    }));
+    waveformHistory.push(snapshot);
+    if (waveformHistory.length > MAX_WAVEFORM_STEPS) waveformHistory.shift();
+}
+
+function render() {
+    X.fillStyle = '#0d1117';
+    X.fillRect(0, 0, W, H);
+
+    X.save();
+    X.translate(W / 2, H / 2);
+    X.scale(V.zoom, V.zoom);
+    X.translate(-V.x, -V.y);
+
+    drawGrid();
+
+    wires.forEach(w => {
+        if (!w.fromPin || !w.toPin) return;
+        X.beginPath();
+        const x1 = w.fromPin.x, y1 = w.fromPin.y, x2 = w.toPin.x, y2 = w.toPin.y;
+        const dx = Math.abs(x2 - x1) * 0.5;
+        X.moveTo(x1, y1); X.bezierCurveTo(x1 + dx, y1, x2 - dx, y2, x2, y2);
+        X.strokeStyle = w.fromPin.value === 1 ? '#3fb950' : '#30363d';
+        X.lineWidth = 2.5 / V.zoom; X.stroke();
+    });
+
+    if (connectingPin) {
+        const mouse = screenToWorld(currentMouseX, currentMouseY);
+        X.beginPath(); X.moveTo(connectingPin.x, connectingPin.y); X.lineTo(mouse.x, mouse.y);
+        X.strokeStyle = '#58a6ff'; X.lineWidth = 2 / V.zoom; X.setLineDash([4, 4]); X.stroke(); X.setLineDash([]);
+    }
+
+    components.forEach(comp => {
+        const isSelected = (comp === selectedComponent);
+        X.save();
+        X.translate(comp.x, comp.y);
+
+        if (comp.shape === 'gate') {
+            drawLogicGateGitHubDark(comp, isSelected);
+        } else if (comp.shape === 'subcircuit' || customSubcircuits[comp.type]) {
+            const subDef = customSubcircuits[comp.type] || { pinNamesIn: comp.pinNamesIn, pinNamesOut: comp.pinNamesOut };
+            X.fillStyle = '#161b22';
+            X.strokeStyle = isSelected ? '#58a6ff' : 'rgba(240,246,252,0.2)';
+            X.lineWidth = (isSelected ? 2 : 1) / V.zoom;
+            X.beginPath(); X.roundRect(0, 0, comp.w, comp.h, 6); X.fill(); X.stroke();
+
+            X.fillStyle = '#58a6ff';
+            X.font = 'bold 11px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+            X.fillText(comp.type, comp.w / 2, 14);
+
+            X.fillStyle = '#8b949e'; X.font = '9px sans-serif'; X.textAlign = 'left'; X.textBaseline = 'middle';
+            (subDef.pinNamesIn || comp.pinNamesIn || []).forEach((pName, idx) => {
+                if (comp.inputs[idx]) {
+                    const py = comp.inputs[idx].y - comp.y;
+                    X.fillText(pName, 10, py);
+                }
+            });
+
+            X.textAlign = 'right';
+            (subDef.pinNamesOut || comp.pinNamesOut || []).forEach((pName, idx) => {
+                if (comp.outputs[idx]) {
+                    const py = comp.outputs[idx].y - comp.y;
+                    X.fillText(pName, comp.w - 10, py);
+                }
+            });
+        } else {
+            X.fillStyle = '#161b22';
+            X.strokeStyle = isSelected ? '#58a6ff' : 'rgba(240,246,252,0.15)';
+            X.lineWidth = (isSelected ? 2 : 1) / V.zoom;
+            X.beginPath(); X.roundRect(0, 0, comp.w, comp.h, 6); X.fill(); X.stroke();
+
+            if (comp.type === 'LED') {
+                X.beginPath(); X.arc(comp.w/2, comp.h/2, comp.w/2 - 6, 0, Math.PI * 2);
+                X.fillStyle = comp.inputs[0] && comp.inputs[0].value === 1 ? '#f85149' : '#21262d';
+                X.fill(); X.stroke();
+            } else if (comp.type === 'SWITCH') {
+                X.fillStyle = comp.state.switchState ? '#3fb950' : '#8b949e';
+                X.font = '11px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText(comp.state.switchState ? 'ON' : 'OFF', comp.w/2, comp.h/2);
+            } else if (comp.type === 'SUB_IN') {
+                X.fillStyle = '#58a6ff';
+                X.font = '10px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText(comp.customName || 'IN', comp.w/2, comp.h/2);
+            } else if (comp.type === 'SUB_OUT') {
+                X.fillStyle = (comp.inputs[0] && comp.inputs[0].value === 1) ? '#3fb950' : '#8b949e';
+                X.font = '10px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText(comp.customName || 'OUT', comp.w/2, comp.h/2);
+            } else if (comp.type === 'WAVE_RECORDER') {
+                X.fillStyle = '#58a6ff';
+                X.font = '10px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText(comp.customName, comp.w/2, comp.h/2);
+            } else if (comp.type === 'CLOCK') {
+                X.fillStyle = '#d4a843';
+                X.font = '10px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText(comp.customName || 'CLK', comp.w/2, comp.h/2);
+            } else if (comp.type === 'REG') {
+                X.fillStyle = '#58a6ff';
+                X.font = 'bold 10px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText('REG:' + (comp.state.q || 0), comp.w/2, comp.h/2);
+            } else if (comp.type === 'MUX') {
+                X.fillStyle = '#d4a843';
+                X.font = 'bold 10px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText('MUX', comp.w/2, comp.h/2);
+            } else if (comp.type === 'RAM') {
+                X.fillStyle = '#3fb950';
+                X.font = 'bold 10px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText('RAM', comp.w/2, comp.h/2);
+            } else if (comp.type === 'LCD_DISPLAY') {
+                let val = 0;
+                for (let i = 0; i < 8; i++) {
+                    if (comp.inputs[i] && comp.inputs[i].value === 1) val += (1 << i);
+                }
+                X.fillStyle = '#0d1117';
+                X.fillRect(6, 16, comp.w - 12, comp.h - 24);
+                X.strokeStyle = '#30363d'; X.strokeRect(6, 16, comp.w - 12, comp.h - 24);
+
+                X.fillStyle = '#3fb950';
+                X.font = 'bold 16px monospace'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText(val.toString(10), comp.w / 2, comp.h / 2 - 6);
+                X.fillStyle = '#8b949e';
+                X.font = '10px monospace';
+                X.fillText('0x' + val.toString(16).toUpperCase().padStart(2, '0'), comp.w / 2, comp.h / 2 + 16);
+            } else if (comp.type === 'MATRIX_16') {
+                X.fillStyle = '#0d1117';
+                X.fillRect(4, 4, comp.w - 8, comp.h - 8);
+                X.strokeStyle = '#30363d'; X.strokeRect(4, 4, comp.w - 8, comp.h - 8);
+                let activeRow = 0, activeCol = 0;
+                for(let i=0; i<2; i++) if(comp.inputs[i] && comp.inputs[i].value === 1) activeRow += (1 << i);
+                for(let i=2; i<4; i++) if(comp.inputs[i] && comp.inputs[i].value === 1) activeCol += (1 << (i-2));
+                
+                const dotSize = (comp.w - 16) / 16;
+                for(let r=0; r<16; r++) {
+                    for(let col=0; col<16; col++) {
+                        X.fillStyle = (r === activeRow && col === activeCol) ? '#3fb950' : '#21262d';
+                        X.fillRect(8 + col * dotSize, 8 + r * dotSize, dotSize - 0.5, dotSize - 0.5);
+                    }
+                }
+            } else if (comp.type === 'PIXEL_256_128') {
+                X.fillStyle = '#0d1117';
+                X.fillRect(4, 4, comp.w - 8, comp.h - 8);
+                X.strokeStyle = '#30363d'; X.strokeRect(4, 4, comp.w - 8, comp.h - 8);
+                X.fillStyle = '#58a6ff';
+                X.font = '9px monospace'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText('256x128 LCD', comp.w / 2, comp.h / 2);
+            } else if (comp.type === 'SEVEN_SEG') {
+                X.fillStyle = '#f85149'; X.font = 'bold 24px monospace'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                let val = 0; for(let i=0; i<4; i++) if(comp.inputs[i] && comp.inputs[i].value === 1) val += (1 << i);
+                X.fillText(val.toString(16).toUpperCase(), comp.w/2, comp.h/2);
+            } else {
+                X.fillStyle = '#c9d1d9'; X.font = '11px sans-serif'; X.textAlign = 'center'; X.textBaseline = 'middle';
+                X.fillText(comp.name, comp.w/2, comp.h/2);
+            }
+        }
+
+        [...comp.inputs, ...comp.outputs].forEach(pin => {
+            const px = pin.type === 'in' ? 0 : comp.w, py = pin.y - comp.y;
+            X.beginPath(); X.arc(px, py, pin === hoveredPin || pin === connectingPin ? 4.5 : 3, 0, Math.PI * 2);
+            X.fillStyle = pin.value === 1 ? '#3fb950' : '#30363d';
+            X.strokeStyle = '#8b949e';
+            X.lineWidth = 1 / V.zoom; X.fill(); X.stroke();
+        });
+
+        X.restore();
+    });
+
+    X.restore();
+    renderWaveformsPanel();
+}
+
+function drawLogicGateGitHubDark(el, isSelected = false) {
+  const w = el.w, h = el.h, type = el.gateType;
+  X.save();
+  X.strokeStyle = isSelected ? '#58a6ff' : 'rgba(240,246,252,0.2)';
+  X.fillStyle = '#161b22';
+  X.lineWidth = (isSelected ? 2 : 1) / V.zoom;
+  X.lineCap = 'round'; X.lineJoin = 'round';
+
+  const unitW = w / 5, unitH = h / 4;
+  const bodyW = unitW * 3, bodyH = h;
+  const bodyX = -w / 2 + unitW, bodyY = -h / 2;
+
+  X.translate(w / 2, h / 2);
+  X.beginPath();
+  if (type === 'AND' || type === 'NAND') {
+    const radius = bodyH * 0.5;
+    X.moveTo(bodyX, bodyY);
+    X.lineTo(bodyX + bodyW - radius, bodyY);
+    X.arc(bodyX + bodyW - radius, bodyY + radius, radius, -Math.PI / 2, Math.PI / 2);
+    X.lineTo(bodyX, bodyY + bodyH);
+  } else if (type === 'OR' || type === 'NOR' || type === 'XOR') {
+    X.moveTo(bodyX, bodyY);
+    X.quadraticCurveTo(bodyX + bodyW * 0.65, bodyY, bodyX + bodyW, bodyY + bodyH * 0.5);
+    X.quadraticCurveTo(bodyX + bodyW * 0.65, bodyY + bodyH, bodyX, bodyY + bodyH);
+    X.quadraticCurveTo(bodyX + bodyW * 0.3, bodyY + bodyH * 0.5, bodyX, bodyY);
+  } else if (type === 'NOT') {
+    X.moveTo(bodyX, bodyY);
+    X.lineTo(bodyX + bodyW, bodyY + bodyH * 0.5);
+    X.lineTo(bodyX, bodyY + bodyH);
+  }
+  X.closePath(); X.fill(); X.stroke();
+
+  if (type === 'XOR') {
+    X.beginPath();
+    const curveOffset = unitW * 0.35;
+    X.moveTo(bodyX - curveOffset, bodyY);
+    X.quadraticCurveTo(bodyX + curveOffset * 0.8, bodyY + bodyH * 0.5, bodyX - curveOffset, bodyY + bodyH);
+    X.stroke();
+  }
+
+  X.beginPath();
+  if (type === 'NOT') {
+    X.moveTo(-w / 2, 0); X.lineTo(bodyX, 0);
+  } else if (type === 'OR' || type === 'NOR' || type === 'XOR') {
+    X.moveTo(-w / 2, -OR_OFFSET_Y); X.lineTo(bodyX + OR_START_X, -OR_OFFSET_Y);
+    X.moveTo(-w / 2, OR_OFFSET_Y); X.lineTo(bodyX + OR_START_X, OR_OFFSET_Y);
+  } else {
+    X.moveTo(-w / 2, -unitH); X.lineTo(bodyX, -unitH);
+    X.moveTo(-w / 2, unitH); X.lineTo(bodyX, unitH);
+  }
+  X.stroke();
+
+  if (type === 'NAND' || type === 'NOR' || type === 'NOT') {
+    const circleRadius = 4;
+    const circleX = bodyX + bodyW + circleRadius;
+    X.beginPath(); X.moveTo(circleX + circleRadius, 0); X.lineTo(w / 2, 0); X.stroke();
+    X.beginPath(); X.arc(circleX, 0, circleRadius, 0, Math.PI * 2);
+    X.fillStyle = '#161b22'; X.fill(); X.stroke();
+  } else {
+    X.beginPath(); X.moveTo(bodyX + bodyW, 0); X.lineTo(w / 2, 0); X.stroke();
+  }
+
+  X.fillStyle = '#c9d1d9';
+  X.font = `bold 12px sans-serif`;
+  X.textAlign = 'center'; X.textBaseline = 'middle';
+  X.fillText(type, 0, 0);
+
+  X.restore();
+}
+
+function drawGrid() {
+  const gs = 40, tl = screenToWorld(0, 0), br = screenToWorld(W, H);
+  const sx = Math.floor(tl.x / gs) * gs, sy = Math.floor(tl.y / gs) * gs;
+  const ex = Math.ceil(br.x / gs) * gs, ey = Math.ceil(br.y / gs) * gs;
+  X.strokeStyle = 'rgba(255,255,255,0.03)'; X.lineWidth = 1 / V.zoom;
+  for (let x = sx; x <= ex; x += gs) { X.beginPath(); X.moveTo(x, sy); X.lineTo(x, ey); X.stroke(); }
+  for (let y = sy; y <= ey; y += gs) { X.beginPath(); X.moveTo(sx, y); X.lineTo(ex, y); X.stroke(); }
+}
+
+function renderWaveformsPanel() {
+    const wc = document.getElementById('waveform-canvas');
+    const wctx = wc.getContext('2d');
+    const dpr = window.devicePixelRatio || 2;
+    const rect = wc.parentElement.getBoundingClientRect();
+    
+    if (wc.width !== rect.width * dpr || wc.height !== rect.height * dpr) {
+        wc.width = rect.width * dpr;
+        wc.height = rect.height * dpr;
+    }
+    wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    wctx.imageSmoothingEnabled = true;
+    wctx.clearRect(0, 0, rect.width, rect.height);
+
+    const recorders = components.filter(c => c.type === 'WAVE_RECORDER');
+    if (recorders.length === 0) {
+        wctx.fillStyle = '#8b949e'; wctx.font = '11px sans-serif';
+        wctx.textAlign = 'center'; wctx.textBaseline = 'middle';
+        wctx.fillText('提示: 添加“波形接收机”并连接信号后即可显示分轨波形', rect.width/2, rect.height/2);
+        return;
+    }
+
+    const rowH = rect.height / recorders.length;
+    const labelWidth = 65;
+    const plotWidth = rect.width - labelWidth;
+    const stepW = plotWidth / MAX_WAVEFORM_STEPS;
+
+    recorders.forEach((rec, idx) => {
+        const yTop = idx * rowH;
+        const yBottom = (idx + 1) * rowH;
+        const yBaseLine = yBottom - 10;
+        const waveHeight = 16;
+
+        wctx.fillStyle = idx % 2 === 0 ? '#161b22' : '#0d1117';
+        wctx.fillRect(0, yTop, rect.width, rowH);
+
+        wctx.fillStyle = idx % 2 === 0 ? '#1f2430' : '#161b22';
+        wctx.fillRect(0, yTop, labelWidth, rowH);
+
+        wctx.fillStyle = '#58a6ff'; wctx.font = '10px sans-serif'; wctx.textAlign = 'right'; wctx.textBaseline = 'middle';
+        wctx.fillText(rec.customName, labelWidth - 8, yTop + rowH / 2);
+
+        wctx.strokeStyle = 'rgba(240,246,252,0.12)'; wctx.lineWidth = 1;
+        wctx.beginPath(); wctx.moveTo(labelWidth, yTop); wctx.lineTo(labelWidth, yBottom); wctx.stroke();
+
+        wctx.strokeStyle = 'rgba(240,246,252,0.06)'; wctx.lineWidth = 1;
+        wctx.beginPath(); wctx.moveTo(0, yBottom); wctx.lineTo(rect.width, yBottom); wctx.stroke();
+
+        wctx.strokeStyle = 'rgba(240,246,252,0.15)'; wctx.lineWidth = 1;
+        wctx.beginPath(); wctx.moveTo(labelWidth, yBaseLine); wctx.lineTo(rect.width, yBaseLine); wctx.stroke();
+
+        wctx.strokeStyle = '#3fb950'; wctx.lineWidth = 2; wctx.beginPath();
+        let startX = rect.width - waveformHistory.length * stepW;
+        waveformHistory.forEach((snap, sIdx) => {
+            const item = snap.find(s => s.id === rec.id);
+            const val = item ? item.value : 0;
+            const x = labelWidth + Math.max(0, startX + sIdx * stepW - labelWidth);
+            const y = yBaseLine - (val * waveHeight);
+            if (sIdx === 0) wctx.moveTo(x, y); else wctx.lineTo(x, y);
+        });
+        wctx.stroke();
+    });
+}
+
+const wfPanel = document.getElementById('waveform-panel');
+const wfHandle = document.getElementById('waveformResizeHandle');
+let isResizingWf = false, startY = 0, startHeight = 0;
+
+wfHandle.onmousedown = (e) => {
+    isResizingWf = true; startY = e.clientY; startHeight = wfPanel.offsetHeight;
+    e.preventDefault();
+};
+window.addEventListener('mousemove', (e) => {
+    if (!isResizingWf) return;
+    const dy = startY - e.clientY;
+    wfPanel.style.height = Math.max(80, Math.min(window.innerHeight * 0.85, startHeight + dy)) + 'px';
+});
+window.addEventListener('mouseup', () => { isResizingWf = false; });
+
+wfHandle.ontouchstart = (e) => {
+    if (e.touches.length === 1) {
+        isResizingWf = true; startY = e.touches[0].clientY; startHeight = wfPanel.offsetHeight;
+        e.preventDefault();
+    }
+};
+window.addEventListener('touchmove', (e) => {
+    if (!isResizingWf || e.touches.length !== 1) return;
+    const dy = startY - e.touches[0].clientY;
+    wfPanel.style.height = Math.max(80, Math.min(window.innerHeight * 0.85, startHeight + dy)) + 'px';
+}, { passive: false });
+window.addEventListener('touchend', () => { isResizingWf = false; });
+
+const ctxMenu = document.getElementById('contextMenu');
+const ctxBtnRename = document.getElementById('ctxBtnRename');
+const ctxBtnFreq = document.getElementById('ctxBtnFreq');
+const ctxBtnDelete = document.getElementById('ctxBtnDelete');
+let longPressTimer = null;
+let targetComponent = null;
+
+function showContextMenu(clientX, clientY, comp) {
+    targetComponent = comp;
+    ctxBtnRename.style.display = (comp.type === 'WAVE_RECORDER' || comp.type === 'SUB_IN' || comp.type === 'SUB_OUT') ? 'block' : 'none';
+    ctxBtnFreq.style.display = comp.type === 'CLOCK' ? 'block' : 'none';
+    
+    ctxMenu.style.left = Math.min(window.innerWidth - 120, clientX) + 'px';
+    ctxMenu.style.top = Math.min(window.innerHeight - 50, clientY - 40) + 'px';
+    ctxMenu.classList.add('show');
+}
+
+function hideContextMenu() {
+    ctxMenu.classList.remove('show');
+    targetComponent = null;
+}
+
+ctxBtnDelete.onclick = () => {
+    if (targetComponent) {
+        wires = wires.filter(w => w.fromPin.component !== targetComponent && w.toPin.component !== targetComponent);
+        components = components.filter(c => c !== targetComponent);
+        pushState();
+    }
+    hideContextMenu();
+};
+
+ctxBtnRename.onclick = () => {
+    if (targetComponent && (targetComponent.type === 'WAVE_RECORDER' || targetComponent.type === 'SUB_IN' || targetComponent.type === 'SUB_OUT')) {
+        const newName = prompt('输入新的名称:', targetComponent.customName);
+        if (newName) {
+            targetComponent.customName = newName.trim();
+            pushState();
+        }
+    }
+    hideContextMenu();
+};
+
+ctxBtnFreq.onclick = () => {
+    if (targetComponent && targetComponent.type === 'CLOCK') {
+        const newFreq = prompt('输入时钟脉冲周期 (帧数):', targetComponent.state.clockInterval);
+        const val = parseInt(newFreq);
+        if (!isNaN(val) && val > 0) {
+            targetComponent.state.clockInterval = val;
+            pushState();
+        }
+    }
+    hideContextMenu();
+};
+
+window.addEventListener('mousedown', (e) => {
+    if (!ctxMenu.contains(e.target)) hideContextMenu();
+});
+
+function findPinAtWorld(wx, wy) {
+    const hitRadius = Math.max(8, 16 / V.zoom);
+    for (let comp of components) {
+        for (let pin of [...comp.inputs, ...comp.outputs]) {
+            if (Math.hypot(pin.x - wx, pin.y - wy) < hitRadius) return pin;
+        }
+    }
+    return null;
+}
+
+let isDraggingComp = false, dragOffset = { x: 0, y: 0 };
+let hasMoved = false;
+
+C.addEventListener('mousedown', e => {
+    currentMouseX = e.clientX; currentMouseY = e.clientY;
+    const world = screenToWorld(e.clientX, e.clientY);
+    let clickedPin = findPinAtWorld(world.x, world.y);
+    if (clickedPin) {
+        if (!connectingPin) {
+            connectingPin = clickedPin;
+        } else {
+            if (connectingPin === clickedPin) {
+                wires = wires.filter(w => w.fromPin !== clickedPin && w.toPin !== clickedPin);
+            } else {
+                tryConnect(connectingPin, clickedPin);
+            }
+            connectingPin = null;
+            pushState();
+        }
+        return;
+    }
+    let clickedComp = null;
+    for (let i = components.length - 1; i >= 0; i--) {
+        if (components[i].contains(world.x, world.y)) { clickedComp = components[i]; break; }
+    }
+    if (clickedComp) {
+        selectedComponent = clickedComp;
+        if (clickedComp.type === 'SWITCH' || clickedComp.type === 'SUB_IN') {
+            clickedComp.state.switchState = clickedComp.state.switchState ? 0 : 1;
+            pushState();
+        } else if (clickedComp.type === 'BUTTON') {
+            clickedComp.state.switchState = 1;
+            pushState();
+        }
+        isDraggingComp = true; hasMoved = false;
+        dragOffset = { x: world.x - clickedComp.x, y: world.y - clickedComp.y };
+
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => {
+            if (!hasMoved) showContextMenu(e.clientX, e.clientY, clickedComp);
+        }, 600);
+    } else {
+        selectedComponent = null; isPanning = true; panStart = { x: e.clientX, y: e.clientY };
+    }
+});
+
+C.addEventListener('mousemove', e => {
+    currentMouseX = e.clientX; currentMouseY = e.clientY;
+    const world = screenToWorld(e.clientX, e.clientY);
+    hoveredPin = findPinAtWorld(world.x, world.y);
+    if (Math.abs(e.clientX - currentMouseX) > 4 || Math.abs(e.clientY - currentMouseY) > 4) {
+        hasMoved = true; clearTimeout(longPressTimer);
+    }
+    if (isPanning) {
+        V.x -= (e.clientX - panStart.x) / V.zoom; V.y -= (e.clientY - panStart.y) / V.zoom;
+        panStart = { x: e.clientX, y: e.clientY }; return;
+    }
+    if (isDraggingComp && selectedComponent) {
+        hasMoved = true; clearTimeout(longPressTimer);
+        selectedComponent.x = world.x - dragOffset.x; selectedComponent.y = world.y - dragOffset.y;
+        selectedComponent.updatePins(); return;
+    }
+});
+
+C.addEventListener('mouseup', e => {
+    clearTimeout(longPressTimer);
+    let needPush = isDraggingComp;
+    components.forEach(c => { if (c.type === 'BUTTON') c.state.switchState = 0; });
+    if (connectingPin) {
+        let targetPin = findPinAtWorld(world.x, world.y);
+        if (targetPin) {
+            if (connectingPin === targetPin) {
+                wires = wires.filter(w => w.fromPin !== targetPin && w.toPin !== targetPin);
+            } else {
+                tryConnect(connectingPin, targetPin);
+            }
+            needPush = true;
+        }
+        connectingPin = null;
+    }
+    isPanning = false; isDraggingComp = false;
+    if (needPush) pushState();
+});
+
+function tryConnect(p1, p2) {
+    if (p1.type === p2.type) {
+        const existingIdx = wires.findIndex(w => (w.fromPin === p1 && w.toPin === p2) || (w.fromPin === p2 && w.toPin === p1));
+        if (existingIdx >= 0) {
+            wires.splice(existingIdx, 1);
+        } else {
+            const from = p1.type === 'out' ? p1 : p2;
+            const to = p1.type === 'in' ? p1 : p2;
+            if (from !== to) wires.push(new Wire(from, to));
+        }
+        return;
+    }
+    const from = p1.type === 'out' ? p1 : p2;
+    const to = p1.type === 'in' ? p1 : p2;
+    const existingIdx = wires.findIndex(w => w.fromPin === from && w.toPin === to);
+    if (existingIdx >= 0) {
+        wires.splice(existingIdx, 1);
+    } else {
+        wires.push(new Wire(from, to));
+    }
+}
+
+C.addEventListener('wheel', e => {
+    e.preventDefault();
+    const zf = e.deltaY > 0 ? 0.9 : 1.1, nz = Math.max(V.minZoom, Math.min(V.maxZoom, V.zoom * zf));
+    const bw = screenToWorld(e.clientX, e.clientY);
+    V.zoom = nz;
+    const aw = screenToWorld(e.clientX, e.clientY);
+    V.x += bw.x - aw.x; V.y += bw.y - aw.y;
+}, { passive: false });
+
+C.addEventListener('contextmenu', e => e.preventDefault());
+
+C.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches;
+    if (t.length === 1) {
+        const touch = t[0]; currentMouseX = touch.clientX; currentMouseY = touch.clientY;
+        const world = screenToWorld(touch.clientX, touch.clientY);
+        let clickedPin = findPinAtWorld(world.x, world.y);
+        if (clickedPin) {
+            if (!connectingPin) {
+                connectingPin = clickedPin;
+            } else {
+                if (connectingPin === clickedPin) {
+                    wires = wires.filter(w => w.fromPin !== clickedPin && w.toPin !== clickedPin);
+                } else {
+                    tryConnect(connectingPin, clickedPin);
+                }
+                connectingPin = null;
+                pushState();
+            }
+            return;
+        }
+        let clickedComp = null;
+        for (let i = components.length - 1; i >= 0; i--) {
+            if (components[i].contains(world.x, world.y)) { clickedComp = components[i]; break; }
+        }
+        if (clickedComp) {
+            selectedComponent = clickedComp;
+            if (clickedComp.type === 'SWITCH' || clickedComp.type === 'SUB_IN') {
+                clickedComp.state.switchState = clickedComp.state.switchState ? 0 : 1;
+                pushState();
+            } else if (clickedComp.type === 'BUTTON') {
+                clickedComp.state.switchState = 1;
+                pushState();
+            }
+            isDraggingComp = true; hasMoved = false;
+            dragOffset = { x: world.x - clickedComp.x, y: world.y - clickedComp.y };
+
+            clearTimeout(longPressTimer);
+            longPressTimer = setTimeout(() => {
+                if (!hasMoved) showContextMenu(touch.clientX, touch.clientY, clickedComp);
+            }, 600);
+        } else {
+            isPanning = true; panStart = { x: touch.clientX, y: touch.clientY };
+        }
+    } else if (t.length === 2) {
+        clearTimeout(longPressTimer);
+        isPanning = false; isDraggingComp = false; connectingPin = null;
+        const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+        pinchStartDist = Math.hypot(dx, dy); pinchStartZoom = V.zoom;
+        touchStartCenter = { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 };
+        touchStartPan = { x: V.x, y: V.y };
+    }
+}, { passive: false });
+
+C.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const t = e.touches;
+    if (t.length === 1 && isPanning) {
+        V.x -= (t[0].clientX - panStart.x) / V.zoom; V.y -= (t[0].clientY - panStart.y) / V.zoom;
+        panStart = { x: t[0].clientX, y: t[0].clientY };
+    } else if (t.length === 1 && isDraggingComp && selectedComponent) {
+        hasMoved = true; clearTimeout(longPressTimer);
+        const world = screenToWorld(t[0].clientX, t[0].clientY);
+        selectedComponent.x = world.x - dragOffset.x; selectedComponent.y = world.y - dragOffset.y;
+        selectedComponent.updatePins();
+    } else if (t.length === 2) {
+        clearTimeout(longPressTimer);
+        const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+        const dist = Math.hypot(dx, dy), zf = dist / pinchStartDist;
+        const nz = Math.max(V.minZoom, Math.min(V.maxZoom, pinchStartZoom * zf));
+        const currentCenter = { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 };
+        const bw = { x: (touchStartCenter.x - W / 2) / pinchStartZoom + touchStartPan.x, y: (touchStartCenter.y - H / 2) / pinchStartZoom + touchStartPan.y };
+        V.zoom = nz;
+        V.x = bw.x - (currentCenter.x - W / 2) / V.zoom;
+        V.y = bw.y - (currentCenter.y - H / 2) / V.zoom;
+    }
+}, { passive: false });
+
+C.addEventListener('touchend', e => {
+    e.preventDefault();
+    clearTimeout(longPressTimer);
+    let needPush = isDraggingComp;
+    components.forEach(c => { if (c.type === 'BUTTON') c.state.switchState = 0; });
+    if (connectingPin && e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        const world = screenToWorld(touch.clientX, touch.clientY);
+        let targetPin = findPinAtWorld(world.x, world.y);
+        if (targetPin) {
+            if (connectingPin === targetPin) {
+                wires = wires.filter(w => w.fromPin !== targetPin && w.toPin !== targetPin);
+            } else {
+                tryConnect(connectingPin, targetPin);
+            }
+            needPush = true;
+        }
+        connectingPin = null;
+    }
+    isPanning = false; isDraggingComp = false;
+    if (needPush) pushState();
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedComponent) {
+        wires = wires.filter(w => w.fromPin.component !== selectedComponent && w.toPin.component !== selectedComponent);
+        components = components.filter(c => c !== selectedComponent);
+        selectedComponent = null;
+        pushState();
+    }
+});
+
+const panel = document.getElementById('uiPanel');
+const collapseBtn = document.getElementById('collapseBtn');
+const expandBtn = document.getElementById('expandBtn');
+collapseBtn.onclick = () => { panel.classList.add('collapsed'); expandBtn.classList.add('visible'); };
+expandBtn.onclick = () => { panel.classList.remove('collapsed'); expandBtn.classList.remove('visible'); };
+
+document.getElementById('btn-save').onclick = () => {
+    localStorage.setItem('gate_sim_v1.33.0', JSON.stringify(serialize()));
+    alert('电路已成功保存到本地存储！');
+};
+
+// 采用标准的 toBlob + ObjectURL + 动态 <a> 标签点击触发下载
+document.getElementById('btn-export').onclick = () => {
+    const data = serialize();
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gate_circuit_' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+document.getElementById('btn-import').onclick = () => {
+    document.getElementById('file-input').click();
+};
+
+document.getElementById('file-input').onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+            deserialize(data, true);
+            alert('电路文件导入成功！');
+        } catch(err) {
+            alert('文件解析失败: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+};
+
+function serialize() {
+    return {
+        components: components.map(c => ({ id: c.id, type: c.type, x: c.x, y: c.y, state: c.state, customName: c.customName, pinNamesIn: c.pinNamesIn, pinNamesOut: c.pinNamesOut })),
+        wires: wires.map(w => ({
+            fromCompId: w.fromPin.component.id, fromPinIndex: w.fromPin.index,
+            toCompId: w.toPin.component.id, toPinIndex: w.toPin.index
+        }))
+    };
+}
+
+function deserialize(data, recordHistory = true) {
+    components = []; wires = [];
+    const map = new Map();
+    data.components.forEach(cd => {
+        const c = new Component(cd.type, cd.x, cd.y, cd.id, { in: cd.pinNamesIn, out: cd.pinNamesOut });
+        c.state = cd.state || c.state;
+        if (cd.customName) c.customName = cd.customName;
+        components.push(c); map.set(cd.id, c);
+    });
+    data.wires.forEach(wd => {
+        const fc = map.get(wd.fromCompId), tc = map.get(wd.toCompId);
+        if (fc && tc) {
+            const fp = fc.outputs[wd.fromPinIndex], tp = tc.inputs[wd.toPinIndex];
+            if (fp && tp) wires.push(new Wire(fp, tp));
+        }
+    });
+    if (recordHistory) pushState();
+}
+
+const EXAMPLES = [
+    {
+        title: '全加器与多路波形',
+        desc: '全加器电路及命名波形接收机监控示例',
+        data: {
+            components: [
+                { id: 'c1', type: 'SWITCH', x: 80, y: 80, state: { switchState: 1 } },
+                { id: 'c2', type: 'SWITCH', x: 80, y: 160, state: { switchState: 0 } },
+                { id: 'c3', type: 'SWITCH', x: 80, y: 240, state: { switchState: 1 } },
+                { id: 'ha1', type: 'HALF_ADDER', x: 240, y: 100, state: {} },
+                { id: 'ha2', type: 'HALF_ADDER', x: 400, y: 140, state: {} },
+                { id: 'or1', type: 'OR', x: 560, y: 200, state: {} },
+                { id: 'rec1', type: 'WAVE_RECORDER', x: 700, y: 120, state: {}, customName: 'SUM' },
+                { id: 'rec2', type: 'WAVE_RECORDER', x: 700, y: 220, state: {}, customName: 'CARRY' }
+            ],
+            wires: [
+                { fromCompId: 'c1', fromPinIndex: 0, toCompId: 'ha1', toPinIndex: 0 },
+                { fromCompId: 'c2', fromPinIndex: 0, toCompId: 'ha1', toPinIndex: 1 },
+                { fromCompId: 'ha1', fromPinIndex: 0, toCompId: 'ha2', toPinIndex: 0 },
+                { fromCompId: 'c3', fromPinIndex: 0, toCompId: 'ha2', toPinIndex: 1 },
+                { fromCompId: 'ha2', fromPinIndex: 0, toCompId: 'rec1', toPinIndex: 0 },
+                { fromCompId: 'ha1', fromPinIndex: 1, toCompId: 'or1', toPinIndex: 0 },
+                { fromCompId: 'ha2', fromPinIndex: 1, toCompId: 'or1', toPinIndex: 1 },
+                { fromCompId: 'or1', fromPinIndex: 0, toCompId: 'rec2', toPinIndex: 0 }
+            ]
+        }
+    }
+];
+
+document.getElementById('btn-examples').onclick = () => {
+    const list = document.getElementById('examples-list'); list.innerHTML = '';
+    EXAMPLES.forEach(ex => {
+        const card = document.createElement('div'); card.className = 'example-card';
+        card.innerHTML = `<div class="example-title">${ex.title}</div><div class="example-desc">${ex.desc}</div>`;
+        card.onclick = () => { deserialize(ex.data, true); document.getElementById('examples-modal').classList.remove('show'); };
+        list.appendChild(card);
+    });
+    document.getElementById('examples-modal').classList.add('show');
+};
+document.getElementById('modal-close').onclick = () => {
+    document.getElementById('examples-modal').classList.remove('show');
+};
+
+document.getElementById('btn-run').onclick = () => {
+    isRunning = !isRunning;
+    document.getElementById('run-icon').innerText = isRunning ? '暂停' : '运行';
+    document.getElementById('btn-run').classList.toggle('active', isRunning);
+};
+document.getElementById('btn-step').onclick = () => {
+    stepSimulation();
+};
+document.getElementById('btn-clear').onclick = () => {
+    if (confirm('清空画布？')) {
+        components = []; wires = [];
+        pushState();
+    }
+};
+document.getElementById('btn-waveform-toggle').onclick = () => {
+    document.getElementById('waveform-panel').classList.toggle('collapsed');
+};
+document.getElementById('btn-clear-wave').onclick = () => { waveformHistory = []; };
+
+const saved = localStorage.getItem('gate_sim_v1.33.0');
+if (saved) {
+    try { deserialize(JSON.parse(saved), true); } catch(e) { deserialize(EXAMPLES[0].data, true); }
+} else {
+    deserialize(EXAMPLES[0].data, true);
+}
+
+function mainLoop() {
+    frameCount++;
+    if (isRunning) {
+        for (let i = 0; i < simSpeed; i++) stepSimulation();
+    }
+    render();
+    requestAnimationFrame(mainLoop);
+}
+requestAnimationFrame(mainLoop);
+
+</script>
+</body>
+</html>
