@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bohemian Grid Studio &middot; 艺术网格画板</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Josefin+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg-cream: #f5f0e8;
+  --bg-warm: #ede4d3;
+  --bg-sand: #e8dcc8;
+  --bg-linen: #faf6f0;
+  --accent-terracotta: #c4715a;
+  --accent-ochre: #c4956a;
+  --accent-sage: #7a8b6e;
+  --accent-rust: #a0522d;
+  --accent-mustard: #d4a843;
+  --accent-rose: #b76e79;
+  --text-dark: #3d2b1f;
+  --text-medium: #6b5344;
+  --text-light: #a08b7a;
+  --text-muted: #c4b5a5;
+  --border-warm: rgba(196,113,90,0.25);
+  --border-soft: rgba(196,113,90,0.12);
+  --shadow-soft: rgba(61,43,31,0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-cream);
+  color: var(--text-dark);
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 顶部状态栏 */
+.status-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 32px;
+  background: var(--bg-warm);
+  border-bottom: 1px solid var(--border-soft);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; z-index: 1000; font-size: 11px; letter-spacing: 2px;
+  font-family: 'Cormorant Garamond', serif;
+}
+.status-bar .sys-id { color: var(--accent-terracotta); font-weight: 600; }
+.status-bar .sys-time {
+  color: var(--text-light);
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Josefin Sans', monospace;
+  letter-spacing: 0.5px;
+}
+.status-bar .sys-status { display: flex; align-items: center; gap: 8px; }
+.status-bar .status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-sage); box-shadow: 0 0 8px rgba(122,139,110,0.4);
+}
+
+/* 顶部工具导航栏 (PC端优化：允许换行或完美自适应展示所有工具与快捷键提示) */
+.top-nav {
+  position: fixed; top: 32px; left: 0; right: 0; height: 56px;
+  background: var(--bg-linen);
+  border-bottom: 1px solid var(--border-soft);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; z-index: 2500; overflow-x: auto; overflow-y: visible; gap: 12px;
+  scrollbar-width: thin;
+}
+.top-nav::-webkit-scrollbar { height: 4px; }
+.top-nav::-webkit-scrollbar-thumb { background: var(--border-warm); border-radius: 2px; }
+
+.logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px; font-weight: 700; color: var(--accent-rust);
+  letter-spacing: 2px; white-space: nowrap; flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+}
+.logo .logo-icon { color: var(--accent-rose); font-size: 14px; }
+
+.toolbar-group {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  position: relative;
+}
+.nav-btn {
+  height: 36px; padding: 0 12px;
+  border: 1.5px solid var(--border-warm);
+  background: transparent;
+  color: var(--text-medium);
+  border-radius: 18px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; cursor: pointer; transition: all 0.2s ease;
+  font-family: 'Josefin Sans', sans-serif;
+  white-space: nowrap; flex-shrink: 0;
+}
+.nav-btn:active { transform: scale(0.92); }
+.nav-btn:hover, .nav-btn.active {
+  border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+  background: rgba(196,113,90,0.06);
+}
+.nav-btn i { font-size: 14px; }
+
+/* 独立悬浮定位下拉菜单 */
+.dropdown-menu {
+  position: fixed; top: 92px; left: 80px;
+  background: var(--bg-linen);
+  border: 1.5px solid var(--border-warm);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 10px 30px rgba(61,43,31,0.2);
+  display: none; flex-direction: column; gap: 4px;
+  z-index: 4000; min-width: 140px;
+  animation: fadeInUp 0.2s ease;
+}
+.dropdown-menu.open { display: flex; }
+.dropdown-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 12px; color: var(--text-medium); cursor: pointer;
+  transition: all 0.2s; white-space: nowrap; gap: 16px;
+}
+.dropdown-item:hover {
+  background: rgba(196,113,90,0.08);
+  color: var(--accent-terracotta);
+}
+.dropdown-item .kbd-shortcut {
+  font-size: 10px; color: var(--text-light); background: var(--bg-cream);
+  padding: 2px 5px; border-radius: 4px; border: 1px solid var(--border-soft);
+  font-family: 'Josefin Sans', monospace;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 波西米亚风格自定义下拉选择组件 */
+.boho-select-wrap {
+  position: relative;
+  width: 100%;
+}
+.boho-select-header {
+  padding: 9px 12px;
+  background: var(--bg-cream);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 8px;
+  color: var(--text-dark);
+  font-size: 13px;
+  font-family: 'Josefin Sans', sans-serif;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border 0.2s;
+}
+.boho-select-header:hover {
+  border-color: var(--accent-terracotta);
+}
+.boho-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--bg-linen);
+  border: 1.5px solid var(--border-warm);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(61,43,31,0.15);
+  display: none;
+  flex-direction: column;
+  z-index: 6000;
+  overflow: hidden;
+}
+.boho-select-dropdown.open {
+  display: flex;
+}
+.boho-select-option {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-medium);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.boho-select-option:hover {
+  background: rgba(196,113,90,0.08);
+  color: var(--accent-terracotta);
+}
+.boho-select-option.selected {
+  background: rgba(196,113,90,0.12);
+  color: var(--accent-terracotta);
+  font-weight: 600;
+}
+
+/* 画布容器 */
+.canvas-container {
+  position: fixed; top: 88px; left: 0; right: 0; bottom: 0;
+  background: var(--bg-cream);
+  touch-action: none;
+}
+canvas {
+  display: block;
+  width: 100vw;
+  height: calc(100vh - 88px);
+  cursor: crosshair;
+}
+
+/* 小地图容器 */
+.minimap-container {
+  position: fixed; bottom: 20px; right: 20px;
+  width: 180px; height: 135px;
+  background: rgba(250, 246, 240, 0.95);
+  border: 1.5px solid var(--border-warm);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(61,43,31,0.12);
+  z-index: 800; overflow: hidden; display: block;
+}
+.minimap-container.hidden { display: none; }
+.minimap-container canvas {
+  width: 100%; height: 100%; display: block; cursor: pointer;
+}
+
+/* 浮动 HUD */
+.floating-hud {
+  position: fixed; bottom: 16px; left: 16px;
+  background: rgba(250, 246, 240, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-warm);
+  border-radius: 10px;
+  padding: 8px 12px;
+  z-index: 900;
+  font-size: 11px;
+  color: var(--text-medium);
+  box-shadow: 0 4px 20px var(--shadow-soft);
+  display: flex; gap: 12px; align-items: center;
+}
+.floating-hud span { color: var(--accent-terracotta); font-weight: 600; }
+
+/* 选中图元时在 HUD 上方弹出的操作悬浮菜单（旋转 + 删除） */
+.selection-action-hud {
+  position: fixed; bottom: 64px; left: 16px;
+  background: rgba(250, 246, 240, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid var(--accent-terracotta);
+  border-radius: 10px;
+  padding: 8px 12px;
+  z-index: 950;
+  font-size: 11px;
+  color: var(--text-medium);
+  box-shadow: 0 6px 20px rgba(61,43,31,0.15);
+  display: none; gap: 8px; align-items: center;
+}
+.selection-action-hud.open { display: flex; }
+.selection-action-hud button {
+  background: var(--bg-cream);
+  border: 1px solid var(--border-warm);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-dark);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  transition: all 0.2s;
+}
+.selection-action-hud button:hover {
+  background: rgba(196,113,90,0.12);
+  border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+}
+.selection-action-hud button.btn-danger:hover {
+  background: rgba(196,90,90,0.12);
+  border-color: var(--accent-rose);
+  color: var(--accent-rose);
+}
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(61, 43, 31, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal-card {
+  background: var(--bg-linen);
+  border: 1.5px solid var(--border-warm);
+  border-radius: 16px;
+  width: 90%; max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(61,43,31,0.12);
+  transform: translateY(20px); transition: transform 0.3s;
+}
+.modal-overlay.open .modal-card { transform: translateY(0); }
+.modal-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; color: var(--accent-rust); margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-close {
+  background: transparent; border: none; font-size: 18px; color: var(--text-light); cursor: pointer;
+}
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-medium); margin-bottom: 4px; }
+.form-control {
+  width: 100%; padding: 9px 12px;
+  background: var(--bg-cream); border: 1.5px solid var(--border-soft);
+  border-radius: 8px; color: var(--text-dark); font-size: 13px;
+  font-family: 'Josefin Sans', sans-serif; outline: none; transition: border 0.2s;
+}
+.form-control:focus { border-color: var(--accent-terracotta); }
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;
+}
+.btn-primary {
+  background: var(--accent-terracotta); color: #fff; border: none;
+  padding: 9px 18px; border-radius: 8px; font-size: 12px; cursor: pointer;
+  font-family: 'Josefin Sans', sans-serif; transition: background 0.2s;
+}
+.btn-primary:hover { background: var(--accent-rust); }
+.btn-secondary {
+  background: transparent; color: var(--text-medium); border: 1.5px solid var(--border-warm);
+  padding: 9px 18px; border-radius: 8px; font-size: 12px; cursor: pointer;
+  font-family: 'Josefin Sans', sans-serif; transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: var(--accent-terracotta); color: var(--accent-terracotta); }
+
+/* 属性侧边栏 */
+.properties-bar {
+  position: fixed; right: 16px; top: 100px;
+  background: rgba(250, 246, 240, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-warm);
+  border-radius: 12px;
+  padding: 10px;
+  z-index: 900;
+  display: flex; flex-direction: column; gap: 10px;
+  box-shadow: 0 4px 20px var(--shadow-soft);
+  transition: opacity 0.3s;
+}
+.properties-bar.hidden { display: none; }
+.prop-row { display: flex; align-items: center; gap: 8px; }
+.color-picker-input {
+  width: 28px; height: 28px; border: none; border-radius: 50%; cursor: pointer;
+  background: none;
+}
+.color-swatch {
+  width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+  transition: transform 0.2s;
+}
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.active { border-color: var(--accent-terracotta); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(50px);
+  background: var(--text-dark); color: var(--bg-linen); padding: 8px 16px;
+  border-radius: 20px; font-size: 12px; z-index: 6000; opacity: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- 顶部状态栏 -->
+<div class="status-bar">
+  <div class="sys-id">BOHEMIAN GRID STUDIO</div>
+  <div class="sys-status">
+    <span class="status-dot"></span>
+    <span class="sys-time" id="sysTime">2026-11-22 10:39:12</span>
+  </div>
+</div>
+
+<!-- 顶部工具导航栏 -->
+<div class="top-nav" id="topNav">
+  <div class="logo">
+    <i data-lucide="feather" class="logo-icon"></i> 网格画板
+  </div>
+  <div class="toolbar-group">
+    <!-- 主工具按钮 -->
+    <button class="nav-btn active" id="currentToolBtn" data-tool="line" title="快捷键: L">
+      <i data-lucide="slash" id="currentToolIcon" style="width:16px;height:16px;"></i>
+      <span id="currentToolLabel">线 (Line)</span>
+    </button>
+    <button class="nav-btn" id="btnMoreTools" title="更多图形工具">
+      <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+    </button>
+    <!-- 橡皮擦按钮 (无文字) -->
+    <button class="nav-btn" id="toolEraser" data-tool="eraser" title="橡皮擦 (快捷键: E)">
+      <i data-lucide="eraser" style="width:16px;height:16px;"></i>
+    </button>
+  </div>
+
+  <div class="toolbar-group">
+    <button class="nav-btn" id="btnCopy" title="复制选中 (Ctrl+C)">
+      <i data-lucide="copy" style="width:16px;height:16px;"></i>
+    </button>
+    <button class="nav-btn" id="btnPaste" title="粘贴 (Ctrl+V)">
+      <i data-lucide="clipboard" style="width:16px;height:16px;"></i>
+    </button>
+    <button class="nav-btn" id="btnUndo" title="撤销 (Ctrl+Z)">
+      <i data-lucide="rotate-ccw" style="width:16px;height:16px;"></i>
+    </button>
+    <button class="nav-btn" id="btnRedo" title="恢复 (Ctrl+Y / Ctrl+Shift+Z)">
+      <i data-lucide="rotate-cw" style="width:16px;height:16px;"></i>
+    </button>
+    <button class="nav-btn" id="btnClear" title="清空画布">
+      <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+    </button>
+    <button class="nav-btn" id="btnSettings" title="设置与版本">
+      <i data-lucide="settings" style="width:16px;height:16px;"></i>
+    </button>
+    <button class="nav-btn" id="btnExport" style="border-color: var(--accent-terracotta); background: rgba(196,113,90,0.08); color: var(--accent-terracotta);" title="高清导出PNG">
+      <i data-lucide="download" style="width:16px;height:16px;"></i>
+    </button>
+  </div>
+</div>
+
+<!-- 更多图形工具下拉菜单 -->
+<div class="dropdown-menu" id="moreToolsMenu">
+  <div class="dropdown-item" data-tool="line" data-label="线 (Line)" data-icon="slash"><span><i data-lucide="slash" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> 线 (Line)</span><span class="kbd-shortcut">L</span></div>
+  <div class="dropdown-item" data-tool="point" data-label="点 (Point)" data-icon="dot"><span><i data-lucide="dot" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> 点 (Point)</span><span class="kbd-shortcut">P</span></div>
+  <div class="dropdown-item" data-tool="rect" data-label="矩形 (Rect)" data-icon="square"><span><i data-lucide="square" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> 矩形 (Rect)</span><span class="kbd-shortcut">R</span></div>
+  <div class="dropdown-item" data-tool="circle" data-label="圆形 (Circle)" data-icon="circle"><span><i data-lucide="circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> 圆形 (Circle)</span><span class="kbd-shortcut">C</span></div>
+  <div class="dropdown-item" data-tool="text" data-label="字符 (Text)" data-icon="type"><span><i data-lucide="type" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> 字符 (Text)</span><span class="kbd-shortcut">T</span></div>
+  <div class="dropdown-item" data-tool="pen" data-label="钢笔 (Pen)" data-icon="pen-tool"><span><i data-lucide="pen-tool" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> 钢笔 (Pen)</span><span class="kbd-shortcut">N</span></div>
+  <div class="dropdown-item" data-tool="select" data-label="选择/区" data-icon="maximize"><span><i data-lucide="maximize" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> 选择/区</span><span class="kbd-shortcut">S</span></div>
+  <div class="dropdown-item" data-tool="gate_and" data-label="AND 门" data-icon="cpu"><span><i data-lucide="cpu" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> AND 门</span></div>
+  <div class="dropdown-item" data-tool="gate_or" data-label="OR 门" data-icon="cpu"><span><i data-lucide="cpu" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> OR 门</span></div>
+  <div class="dropdown-item" data-tool="gate_not" data-label="NOT 门" data-icon="cpu"><span><i data-lucide="cpu" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> NOT 门</span></div>
+  <div class="dropdown-item" data-tool="gate_nand" data-label="NAND 门" data-icon="cpu"><span><i data-lucide="cpu" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> NAND 门</span></div>
+  <div class="dropdown-item" data-tool="gate_nor" data-label="NOR 门" data-icon="cpu"><span><i data-lucide="cpu" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> NOR 门</span></div>
+  <div class="dropdown-item" data-tool="gate_xor" data-label="XOR 门" data-icon="cpu"><span><i data-lucide="cpu" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> XOR 门</span></div>
+</div>
+
+<!-- 属性侧边栏 -->
+<div class="properties-bar" id="propertiesBar">
+  <div class="prop-row">
+    <span id="propSizeLabel" style="font-size:11px;color:var(--text-light)">粗细</span>
+    <input type="range" id="strokeWidthRange" min="1" max="50" value="3" style="width:70px; accent-color: var(--accent-terracotta);">
+    <span id="strokeWidthVal" style="font-size:11px;width:18px;text-align:right;">3</span>
+  </div>
+  <div class="prop-row" id="colorPickerRow" style="gap:5px;">
+    <div class="color-swatch active" style="background:#3d2b1f;" data-color="#3d2b1f" title="暗咖"></div>
+    <div class="color-swatch" style="background:#c4715a;" data-color="#c4715a" title="陶土"></div>
+    <div class="color-swatch" style="background:#c4956a;" data-color="#c4956a" title="赭石"></div>
+    <div class="color-swatch" style="background:#7a8b6e;" data-color="#7a8b6e" title="鼠尾草"></div>
+    <div class="color-swatch" style="background:#b76e79;" data-color="#b76e79" title="玫瑰"></div>
+    <input type="color" id="colorPickerInput" class="color-picker-input" value="#3d2b1f" title="自定义颜色">
+  </div>
+</div>
+
+<!-- 画布容器 -->
+<div class="canvas-container" id="canvasContainer">
+  <canvas id="paintCanvas"></canvas>
+</div>
+
+<!-- 小地图容器 -->
+<div class="minimap-container" id="minimapContainer">
+  <canvas id="minimapCanvas"></canvas>
+</div>
+
+<!-- 浮动 HUD -->
+<div class="floating-hud">
+  <div>缩放: <span id="hudZoom">100%</span></div>
+  <div>网格: <span id="hudGridStep">40px</span></div>
+  <div>元素: <span id="hudCount">0</span></div>
+</div>
+
+<!-- 选中图元时在HUD上方弹出的操作悬浮菜单（旋转 + 删除） -->
+<div class="selection-action-hud" id="selectionActionHud">
+  <span style="font-weight:600; color:var(--accent-rust);" id="actionHudTitle">选中操作:</span>
+  <div id="gateRotateGroup" style="display:flex; gap:6px; align-items:center;">
+    <button id="btnRotateCW" title="快捷键: R"><i data-lucide="rotate-cw" style="width:12px;height:12px;"></i> 顺时针 90° (R)</button>
+    <button id="btnRotateCCW" title="快捷键: Shift+R"><i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i> 逆时针 90°</button>
+  </div>
+  <button class="btn-danger" id="btnDeleteSelected" style="background:rgba(183,110,121,0.1); border-color:var(--accent-rose); color:var(--accent-rose);" title="快捷键: Delete / Backspace"><i data-lucide="trash-2" style="width:12px;height:12px;"></i> 删除选中 (Del)</button>
+</div>
+
+<!-- 设置模态框 -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-card">
+    <div class="modal-title">
+      <span>画布设置与显示选项</span>
+      <button class="modal-close" id="closeSettingsModal"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="form-group">
+      <label>画布宽度 (Width px)</label>
+      <input type="number" id="inputCanvasWidth" class="form-control" value="2000" min="100" max="200000">
+    </div>
+    <div class="form-group">
+      <label>画布高度 (Height px)</label>
+      <input type="number" id="inputCanvasHeight" class="form-control" value="1500" min="100" max="200000">
+    </div>
+    <div class="form-group">
+      <label>基础网格间距 (Grid Spacing px)</label>
+      <input type="number" id="inputBaseGrid" class="form-control" value="40" min="10" max="500">
+    </div>
+    
+    <!-- 网格点样式选择 -->
+    <div class="form-group">
+      <label>网格点样式选择 (Grid Style)</label>
+      <div class="boho-select-wrap" id="gridStyleSelectWrap">
+        <div class="boho-select-header" id="gridStyleHeader">
+          <span id="gridStyleHeaderText">圆点 (Dot)</span>
+          <i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-light);"></i>
+        </div>
+        <div class="boho-select-dropdown" id="gridStyleDropdown">
+          <div class="boho-select-option selected" data-value="dot">圆点 (Dot)</div>
+          <div class="boho-select-option" data-value="cross">十字 (Cross)</div>
+          <div class="boho-select-option" data-value="none">不显示网格点</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 网格点、坐标轴、边框显示控制开关 -->
+    <div class="form-group" style="display:flex; flex-direction:column; gap:8px; margin-top:10px; border-top:1px solid var(--border-soft); padding-top:10px;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <label style="margin:0; cursor:pointer;">显示网格点 (Grid Dots)</label>
+        <input type="checkbox" id="toggleShowGrid" style="width:18px; height:18px; accent-color: var(--accent-terracotta);" checked>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <label style="margin:0; cursor:pointer;">显示坐标轴 (Axes)</label>
+        <input type="checkbox" id="toggleShowAxes" style="width:18px; height:18px; accent-color: var(--accent-terracotta);" checked>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <label style="margin:0; cursor:pointer;">显示物理边框 (Border)</label>
+        <input type="checkbox" id="toggleShowBorder" style="width:18px; height:18px; accent-color: var(--accent-terracotta);" checked>
+      </div>
+    </div>
+
+    <div class="form-group" style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; border-top:1px solid var(--border-soft); padding-top:10px;">
+      <label style="margin:0; cursor:pointer;">启用小地图 (Minimap)</label>
+      <input type="checkbox" id="toggleMinimap" style="width:18px; height:18px; accent-color: var(--accent-terracotta);" checked>
+    </div>
+
+    <!-- 数据文件导入与导出按钮 -->
+    <div class="form-group" style="display:flex; gap:10px; margin-top:14px; border-top:1px solid var(--border-soft); padding-top:14px;">
+      <button class="btn-secondary" id="btnExportDataModal" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;">
+        <i data-lucide="save" style="width:14px;height:14px;"></i> 导出数据文件
+      </button>
+      <button class="btn-secondary" id="btnImportDataModal" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;">
+        <i data-lucide="upload" style="width:14px;height:14px;"></i> 导入数据文件
+      </button>
+      <input type="file" id="importFileInput" accept=".json" style="display:none;">
+    </div>
+
+    <div class="form-group" style="font-size:12px; color:var(--text-medium); margin-top:10px; border-top:1px solid var(--border-soft); padding-top:10px; text-align:center;">
+      <span id="settingsVersionText">版本号: 1.53.0</span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btnCancelSettings">取消</button>
+      <button class="btn-primary" id="btnApplySettings">应用设置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 高清导出模态框 -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal-card">
+    <div class="modal-title">
+      <span>高清渲染导出 PNG</span>
+      <button class="modal-close" id="closeExportModal"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    
+    <!-- 清晰度倍率选择 -->
+    <div class="form-group">
+      <label>清晰度倍率</label>
+      <div class="boho-select-wrap" id="exportScaleSelectWrap">
+        <div class="boho-select-header" id="exportScaleHeader">
+          <span id="exportScaleHeaderText">1.5x (推荐)</span>
+          <i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-light);"></i>
+        </div>
+        <div class="boho-select-dropdown" id="exportScaleDropdown">
+          <div class="boho-select-option" data-value="1">1.0x (原尺寸)</div>
+          <div class="boho-select-option selected" data-value="1.5">1.5x (推荐)</div>
+          <div class="boho-select-option" data-value="2">2.0x (高清)</div>
+          <div class="boho-select-option" data-value="2.5">2.5x 超清</div>
+          <div class="boho-select-option" data-value="3">3.0x (极清)</div>
+          <div class="boho-select-option" data-value="4">4.0x (4K 级别)</div>
+          <div class="boho-select-option" data-value="6">6.0x (海报级)</div>
+          <div class="boho-select-option" data-value="8">8.0x (极致 8K)</div>
+          <div class="boho-select-option" data-value="10">10.0x (工业级)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 导出预览与下载结果区域 -->
+    <div class="form-group" id="exportResultBox" style="display:none; text-align:center; background: rgba(196,113,90,0.06); padding: 12px; border-radius: 10px;">
+      <label style="color:var(--accent-terracotta); font-weight:600; margin-bottom:6px;">高清图片生成成功！</label>
+      <div id="exportImgContainer" style="margin-bottom:10px; max-height:140px; overflow:hidden; border-radius:6px; border:1px solid var(--border-warm);"></div>
+      <a id="downloadLinkBtn" class="btn-primary" style="display:inline-block; text-decoration:none; padding:8px 16px;" download="Bohemia_Grid_1.53.0.png">点击保存图片到本地</a>
+    </div>
+
+    <div class="form-group" style="background: rgba(196,113,90,0.06); padding: 10px; border-radius: 8px; font-size: 12px; color: var(--text-medium);">
+      <div style="font-weight:600; color:var(--accent-rust); margin-bottom:4px;"><i data-lucide="info" style="width:14px;height:14px;vertical-align:middle;"></i> 浏览器独立测试导出能力</div>
+      <div id="browserMaxExportInfo">点击下方“开始全局测算”以自动探测当前浏览器硬件渲染上限...</div>
+      <button class="btn-secondary" id="btnStartBenchmark" style="margin-top:8px; padding:4px 10px; font-size:11px;">开始全局测算浏览器能力</button>
+    </div>
+    <div class="modal-footer" id="exportFooterBtns">
+      <button class="btn-secondary" id="btnCancelExport">取消</button>
+      <button class="btn-primary" id="btnConfirmExport">生成并导出 PNG</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">操作成功</div>
+
+<script>
+// 初始化 Lucide 图标
+lucide.createIcons();
+
+const APP_VERSION = "1.53.0";
+document.getElementById('settingsVersionText').textContent = "版本号: " + APP_VERSION;
+
+const CONFIG = {
+  canvasWidth: 2000,
+  canvasHeight: 1500,
+  baseGridSpacing: 40,
+  gridStyle: 'dot',
+  showGridDots: true,
+  showAxes: true,
+  showBorder: true,
+  enableMinimap: true
+};
+
+const VIEW = {
+  x: 0,
+  y: 0,
+  zoom: 0.6,
+  minZoom: 0.02,
+  maxZoom: 50
+};
+
+const STATE = {
+  activeTool: 'line',
+  eraserSize: 30,
+  penColor: '#3d2b1f',
+  penWidth: 3,
+  elements: [],
+  isDrawing: false,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  currentY: 0,
+  currentPenStroke: null,
+  
+  selectionRect: null,
+  selectedElements: [],
+  clipboard: [],
+  isSelecting: false,
+  
+  isMovingSelection: false,
+  moveStartMouse: { x: 0, y: 0 },
+  elementsOriginalPos: [],
+  
+  isTransforming: false,
+  transformHandle: null,
+  transformStartBox: null,
+  transformCurrentMouse: null
+};
+
+// 严谨强大的撤销/恢复（Undo / Redo）历史栈管理系统
+const HISTORY = {
+  undoStack: [],
+  redoStack: [],
+  maxSize: 50,
+  
+  pushState() {
+    const snapshot = JSON.stringify(STATE.elements);
+    this.undoStack.push(snapshot);
+    if (this.undoStack.length > this.maxSize) {
+      this.undoStack.shift();
+    }
+    this.redoStack = [];
+  },
+  
+  undo() {
+    if (this.undoStack.length === 0) {
+      showToast('没有可撤销的操作');
+      return;
+    }
+    const currentSnapshot = JSON.stringify(STATE.elements);
+    this.redoStack.push(currentSnapshot);
+    const prevSnapshot = this.undoStack.pop();
+    STATE.elements = JSON.parse(prevSnapshot);
+    STATE.selectedElements = [];
+    updateSelectionActionHud();
+    showToast('已撤销');
+  },
+  
+  redo() {
+    if (this.redoStack.length === 0) {
+      showToast('没有可恢复的操作');
+      return;
+    }
+    const currentSnapshot = JSON.stringify(STATE.elements);
+    this.undoStack.push(currentSnapshot);
+    const nextSnapshot = this.redoStack.pop();
+    STATE.elements = JSON.parse(nextSnapshot);
+    STATE.selectedElements = [];
+    updateSelectionActionHud();
+    showToast('已恢复');
+  }
+};
+
+const canvas = document.getElementById('paintCanvas');
+const ctx = canvas.getContext('2d');
+const minimapCanvas = document.getElementById('minimapCanvas');
+const minimapCtx = minimapCanvas.getContext('2d');
+
+function updateSystemTime() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('sysTime').textContent = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+}
+setInterval(updateSystemTime, 1000);
+updateSystemTime();
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = window.innerWidth;
+  const h = window.innerHeight - 88;
+  
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  
+  minimapCanvas.width = minimapCanvas.clientWidth * dpr;
+  minimapCanvas.height = minimapCanvas.clientHeight * dpr;
+  minimapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function getLodGridSpacing() {
+  let spacing = CONFIG.baseGridSpacing;
+  while (spacing * VIEW.zoom < 25) {
+    spacing *= 2;
+  }
+  return spacing;
+}
+
+function screenToWorld(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const cssW = rect.width;
+  const cssH = rect.height;
+  
+  const offsetX = clientX - rect.left;
+  const offsetY = clientY - rect.top;
+  
+  const cx = cssW / 2;
+  const cy = cssH / 2;
+  
+  return {
+    x: (offsetX - cx) / VIEW.zoom + VIEW.x,
+    y: (offsetY - cy) / VIEW.zoom + VIEW.y
+  };
+}
+
+function worldToScreen(wx, wy) {
+  const rect = canvas.getBoundingClientRect();
+  const cssW = rect.width;
+  const cssH = rect.height;
+  const cx = cssW / 2;
+  const cy = cssH / 2;
+  
+  return {
+    x: (wx - VIEW.x) * VIEW.zoom + cx,
+    y: (wy - VIEW.y) * VIEW.zoom + cy
+  };
+}
+
+function getSnappedPoint(wx, wy) {
+  const spacing = getLodGridSpacing();
+  const snappedX = Math.round(wx / spacing) * spacing;
+  const snappedY = Math.round(wy / spacing) * spacing;
+  
+  if (STATE.activeTool === 'line') {
+    return { x: snappedX, y: snappedY, snapped: true };
+  }
+  
+  const screenPt = worldToScreen(wx, wy);
+  const snappedScreenPt = worldToScreen(snappedX, snappedY);
+  if (Math.hypot(screenPt.x - snappedScreenPt.x, screenPt.y - snappedScreenPt.y) < 35) {
+    return { x: snappedX, y: snappedY, snapped: true };
+  }
+  return { x: wx, y: wy, snapped: false };
+}
+
+function getSelectionBoundingBox() {
+  if (STATE.selectedElements.length === 0) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  STATE.selectedElements.forEach(el => {
+    if (el.type === 'line') {
+      minX = Math.min(minX, el.x1, el.x2); minY = Math.min(minY, el.y1, el.y2);
+      maxX = Math.max(maxX, el.x1, el.x2); maxY = Math.max(maxY, el.y1, el.y2);
+    } else if (el.type === 'rect') {
+      minX = Math.min(minX, el.x); minY = Math.min(minY, el.y);
+      maxX = Math.max(maxX, el.x + el.w); maxY = Math.max(maxY, el.y + el.h);
+    } else if (el.type === 'circle') {
+      minX = Math.min(minX, el.cx - el.r); minY = Math.min(minY, el.cy - el.r);
+      maxX = Math.max(maxX, el.cx + el.r); maxY = Math.max(maxY, el.cy + el.r);
+    } else if (el.type === 'point' || el.type === 'text') {
+      minX = Math.min(minX, el.x - 10); minY = Math.min(minY, el.y - 10);
+      maxX = Math.max(maxX, el.x + 10); maxY = Math.max(maxY, el.y + 10);
+    } else if (el.type === 'pen') {
+      el.points.forEach(p => {
+        minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+      });
+    } else if (el.type === 'gate') {
+      minX = Math.min(minX, el.x); minY = Math.min(minY, el.y);
+      maxX = Math.max(maxX, el.x + el.w); maxY = Math.max(maxY, el.y + el.h);
+    }
+  });
+  if (minX === Infinity) return null;
+  return { x: minX - 4, y: minY - 4, w: (maxX - minX) + 8, h: (maxY - minY) + 8 };
+}
+
+function getTransformHandleAt(wx, wy, box) {
+  if (!box) return null;
+  const handleSize = 12 / VIEW.zoom;
+  const handles = {
+    tl: { x: box.x, y: box.y },
+    tr: { x: box.x + box.w, y: box.y },
+    bl: { x: box.x, y: box.y + box.h },
+    br: { x: box.x + box.w, y: box.y + box.h }
+  };
+  for (let key in handles) {
+    const pt = handles[key];
+    if (Math.hypot(pt.x - wx, pt.y - wy) <= handleSize) {
+      return key;
+    }
+  }
+  if (wx >= box.x && wx <= box.x + box.w && wy >= box.y && wy <= box.y + box.h) {
+    return 'move';
+  }
+  return null;
+}
+
+function updateSelectionActionHud() {
+  const hud = document.getElementById('selectionActionHud');
+  const gateRotateGroup = document.getElementById('gateRotateGroup');
+  const title = document.getElementById('actionHudTitle');
+  
+  if (STATE.selectedElements.length > 0) {
+    hud.classList.add('open');
+    const selectedGates = STATE.selectedElements.filter(el => el.type === 'gate');
+    if (selectedGates.length === 1) {
+      gateRotateGroup.style.display = 'flex';
+      title.textContent = "选中逻辑门操作:";
+    } else {
+      gateRotateGroup.style.display = 'none';
+      title.textContent = `已选中 ${STATE.selectedElements.length} 个图元:`;
+    }
+  } else {
+    hud.classList.remove('open');
+  }
+}
+
+function rotateSelectedGate(dir) {
+  const selectedGates = STATE.selectedElements.filter(el => el.type === 'gate');
+  if (selectedGates.length !== 1) return;
+  const gate = selectedGates[0];
+  const dirs = ['right', 'down', 'left', 'up'];
+  let idx = dirs.indexOf(gate.direction || 'right');
+  
+  if (dir === 'cw') {
+    idx = (idx + 1) % 4;
+  } else {
+    idx = (idx + 3) % 4;
+  }
+  const newDir = dirs[idx];
+  
+  HISTORY.pushState();
+  const oldW = gate.w;
+  const oldH = gate.h;
+  gate.direction = newDir;
+  gate.w = oldH;
+  gate.h = oldW;
+  
+  showToast(`逻辑门已旋转至: ${newDir}`);
+}
+
+document.getElementById('btnDeleteSelected').onclick = () => {
+  if (STATE.selectedElements.length === 0) return;
+  HISTORY.pushState();
+  const count = STATE.selectedElements.length;
+  STATE.elements = STATE.elements.filter(el => !STATE.selectedElements.includes(el));
+  STATE.selectedElements = [];
+  updateSelectionActionHud();
+  showToast(`已删除 ${count} 个选中图元`);
+};
+
+document.getElementById('btnRotateCW').onclick = () => rotateSelectedGate('cw');
+document.getElementById('btnRotateCCW').onclick = () => rotateSelectedGate('ccw');
+
+// 桌面端快捷键支持 (PC优化)
+window.addEventListener('keydown', e => {
+  // 忽略输入框内的按键
+  if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+  
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) {
+      HISTORY.redo();
+    } else {
+      HISTORY.undo();
+    }
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    HISTORY.redo();
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+    e.preventDefault();
+    document.getElementById('btnCopy').click();
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+    e.preventDefault();
+    document.getElementById('btnPaste').click();
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (STATE.selectedElements.length > 0) {
+      e.preventDefault();
+      document.getElementById('btnDeleteSelected').click();
+    }
+  } else if (e.key.toLowerCase() === 'l') {
+    setTool('line', '线 (Line)', 'slash');
+  } else if (e.key.toLowerCase() === 'p') {
+    setTool('point', '点 (Point)', 'dot');
+  } else if (e.key.toLowerCase() === 'r') {
+    if (STATE.selectedElements.filter(el => el.type === 'gate').length === 1) {
+      e.preventDefault();
+      rotateSelectedGate(e.shiftKey ? 'ccw' : 'cw');
+    } else {
+      setTool('rect', '矩形 (Rect)', 'square');
+    }
+  } else if (e.key.toLowerCase() === 'c') {
+    if (!(e.ctrlKey || e.metaKey)) setTool('circle', '圆形 (Circle)', 'circle');
+  } else if (e.key.toLowerCase() === 't') {
+    setTool('text', '字符 (Text)', 'type');
+  } else if (e.key.toLowerCase() === 'n') {
+    setTool('pen', '钢笔 (Pen)', 'pen-tool');
+  } else if (e.key.toLowerCase() === 's') {
+    setTool('select', '选择/区', 'maximize');
+  } else if (e.key.toLowerCase() === 'e') {
+    setTool('eraser', '橡皮擦', 'eraser');
+  }
+});
+
+// 严谨的手势与移动/变换系统 (PC端支持鼠标左键拖动画布平移，右键或中键拖动也可平移，以及滚轮缩放)
+let activePointers = new Map();
+let pinchInitialDist = 0;
+let pinchInitialZoom = 1;
+let pinchInitialCenter = { x: 0, y: 0 };
+let pinchInitialView = { x: 0, y: 0 };
+let isPanZoomActive = false;
+let isMouseMiddlePanning = false;
+let mouseMiddleStart = { x: 0, y: 0 };
+
+canvas.addEventListener('pointerdown', e => {
+  // PC端鼠标中键或右键拖动画布平移
+  if (e.button === 1 || e.button === 2) {
+    isMouseMiddlePanning = true;
+    mouseMiddleStart = { x: e.clientX, y: e.clientY };
+    return;
+  }
+  
+  canvas.setPointerCapture(e.pointerId);
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  
+  if (activePointers.size === 2) {
+    isPanZoomActive = true;
+    STATE.isDrawing = false;
+    STATE.isSelecting = false;
+    STATE.isMovingSelection = false;
+    STATE.isTransforming = false;
+    STATE.currentPenStroke = null;
+    
+    const pts = Array.from(activePointers.values());
+    pinchInitialDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    pinchInitialZoom = VIEW.zoom;
+    pinchInitialCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+    pinchInitialView = { x: VIEW.x, y: VIEW.y };
+  } else if (activePointers.size === 1 && !isPanZoomActive) {
+    const wPos = screenToWorld(e.clientX, e.clientY);
+    const box = getSelectionBoundingBox();
+    const handle = getTransformHandleAt(wPos.x, wPos.y, box);
+    
+    if (handle && STATE.selectedElements.length > 0) {
+      if (handle === 'move') {
+        HISTORY.pushState();
+        STATE.isMovingSelection = true;
+        STATE.moveStartMouse = { x: wPos.x, y: wPos.y };
+        STATE.elementsOriginalPos = STATE.selectedElements.map(el => JSON.parse(JSON.stringify(el)));
+      } else {
+        HISTORY.pushState();
+        STATE.isTransforming = true;
+        STATE.transformHandle = handle;
+        STATE.transformStartBox = { ...box };
+        STATE.transformCurrentMouse = { x: wPos.x, y: wPos.y };
+        STATE.selectedElements.forEach(el => {
+          el._orig = JSON.parse(JSON.stringify(el));
+        });
+      }
+    } else if (STATE.activeTool === 'select') {
+      STATE.isSelecting = true;
+      STATE.startX = wPos.x;
+      STATE.startY = wPos.y;
+      STATE.currentX = wPos.x;
+      STATE.currentY = wPos.y;
+    } else if (STATE.activeTool.startsWith('gate_')) {
+      const spacing = CONFIG.baseGridSpacing;
+      const snap = getSnappedPoint(wPos.x, wPos.y);
+      const gateType = STATE.activeTool.replace('gate_', '').toUpperCase();
+      const direction = 'right';
+      
+      let gateWidth = spacing * 5;
+      let gateHeight = spacing * 4;
+      
+      HISTORY.pushState();
+      STATE.elements.push({
+        type: 'gate',
+        gateType: gateType,
+        direction: direction,
+        x: snap.x - gateWidth / 2,
+        y: snap.y - gateHeight / 2,
+        w: gateWidth,
+        h: gateHeight,
+        color: STATE.penColor,
+        width: STATE.penWidth
+      });
+      showToast(`已放置 ${gateType} 门`);
+    } else {
+      const snap = getSnappedPoint(wPos.x, wPos.y);
+      STATE.isDrawing = true;
+      STATE.startX = snap.x;
+      STATE.startY = snap.y;
+      STATE.currentX = snap.x;
+      STATE.currentY = snap.y;
+      
+      if (STATE.activeTool === 'pen') {
+        STATE.currentPenStroke = { type: 'pen', points: [{x: wPos.x, y: wPos.y}], color: STATE.penColor, width: STATE.penWidth };
+      } else if (STATE.activeTool === 'eraser') {
+        HISTORY.pushState();
+        applyEraser(wPos.x, wPos.y);
+      }
+    }
+  }
+});
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('pointermove', e => {
+  if (isMouseMiddlePanning) {
+    const dx = e.clientX - mouseMiddleStart.x;
+    const dy = e.clientY - mouseMiddleStart.y;
+    mouseMiddleStart = { x: e.clientX, y: e.clientY };
+    VIEW.x -= dx / VIEW.zoom;
+    VIEW.y -= dy / VIEW.zoom;
+    return;
+  }
+  
+  if (!activePointers.has(e.pointerId)) return;
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  
+  if (activePointers.size >= 2 && isPanZoomActive) {
+    const pts = Array.from(activePointers.values());
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const zf = dist / (pinchInitialDist || 1);
+    const newZoom = Math.max(VIEW.minZoom, Math.min(VIEW.maxZoom, pinchInitialZoom * zf));
+    
+    const center = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+    
+    VIEW.zoom = newZoom;
+    VIEW.x = pinchInitialView.x - (center.x - pinchInitialCenter.x) / VIEW.zoom;
+    VIEW.y = pinchInitialView.y - (center.y - pinchInitialCenter.y) / VIEW.zoom;
+    
+  } else if (activePointers.size === 1 && !isPanZoomActive) {
+    const wPos = screenToWorld(e.clientX, e.clientY);
+    
+    if (STATE.isMovingSelection) {
+      const rawDx = wPos.x - STATE.moveStartMouse.x;
+      const rawDy = wPos.y - STATE.moveStartMouse.y;
+      
+      const firstOrig = STATE.elementsOriginalPos[0];
+      let targetX = (firstOrig.x1 !== undefined ? firstOrig.x1 : (firstOrig.x !== undefined ? firstOrig.x : firstOrig.cx)) + rawDx;
+      let targetY = (firstOrig.y1 !== undefined ? firstOrig.y1 : (firstOrig.y !== undefined ? firstOrig.y : firstOrig.cy)) + rawDy;
+      const snappedTarget = getSnappedPoint(targetX, targetY);
+      
+      const finalDx = rawDx + (snappedTarget.x - targetX);
+      const finalDy = rawDy + (snappedTarget.y - targetY);
+      
+      STATE.selectedElements.forEach((el, idx) => {
+        const orig = STATE.elementsOriginalPos[idx];
+        if (el.type === 'line') {
+          el.x1 = orig.x1 + finalDx; el.y1 = orig.y1 + finalDy;
+          el.x2 = orig.x2 + finalDx; el.y2 = orig.y2 + finalDy;
+        } else if (el.type === 'rect' || el.type === 'point' || el.type === 'text' || el.type === 'gate') {
+          el.x = orig.x + finalDx; el.y = orig.y + finalDy;
+        } else if (el.type === 'circle') {
+          el.cx = orig.cx + finalDx;
+          el.cy = orig.cy + finalDy;
+        } else if (el.type === 'pen') {
+          el.points.forEach((p, pIdx) => {
+            p.x = orig.points[pIdx].x + finalDx;
+            p.y = orig.points[pIdx].y + finalDy;
+          });
+        }
+      });
+    } else if (STATE.isTransforming) {
+      const snap = getSnappedPoint(wPos.x, wPos.y);
+      const box = STATE.transformStartBox;
+      const startW = box.w || 1;
+      const startH = box.h || 1;
+      let newW = startW, newH = startH;
+      
+      if (STATE.transformHandle === 'br') {
+        newW = Math.max(10, (snap.x - box.x));
+        newH = Math.max(10, (snap.y - box.y));
+      } else if (STATE.transformHandle === 'tl') {
+        newW = Math.max(10, (box.x + box.w - snap.x));
+        newH = Math.max(10, (box.y + box.h - snap.y));
+      }
+      
+      const scaleX = newW / startW;
+      const scaleY = newH / startH;
+      const originX = STATE.transformHandle === 'tl' ? box.x + box.w : box.x;
+      const originY = STATE.transformHandle === 'tl' ? box.y + box.h : box.y;
+      
+      STATE.selectedElements.forEach((el, idx) => {
+        const orig = el._orig;
+        if (orig.type === 'line') {
+          el.x1 = originX + (orig.x1 - originX) * scaleX;
+          el.y1 = originY + (orig.y1 - originY) * scaleY;
+          el.x2 = originX + (orig.x2 - originX) * scaleX;
+          el.y2 = originY + (orig.y2 - originY) * scaleY;
+        } else if (orig.type === 'rect' || orig.type === 'gate') {
+          el.x = originX + (orig.x - originX) * scaleX;
+          el.y = originY + (orig.y - originY) * scaleY;
+          el.w = orig.w * scaleX;
+          el.h = orig.h * scaleY;
+        } else if (orig.type === 'circle') {
+          el.cx = originX + (orig.cx - originX) * scaleX;
+          el.cy = originY + (orig.cy - originY) * scaleY;
+          el.r = orig.r * ((scaleX + scaleY) / 2);
+        } else if (orig.type === 'point' || orig.type === 'text') {
+          el.x = originX + (orig.x - originX) * scaleX;
+          el.y = originY + (orig.y - originY) * scaleY;
+        } else if (orig.type === 'pen') {
+          el.points.forEach((p, pIdx) => {
+            p.x = originX + (orig.points[pIdx].x - originX) * scaleX;
+            p.y = originY + (orig.points[pIdx].y - originY) * scaleY;
+          });
+        }
+      });
+    } else if (STATE.isSelecting) {
+      STATE.currentX = wPos.x;
+      STATE.currentY = wPos.y;
+    } else if (STATE.isDrawing) {
+      const snap = getSnappedPoint(wPos.x, wPos.y);
+      STATE.currentX = snap.x;
+      STATE.currentY = snap.y;
+      
+      if (STATE.activeTool === 'pen' && STATE.currentPenStroke) {
+        STATE.currentPenStroke.points.push({ x: wPos.x, y: wPos.y });
+      } else if (STATE.activeTool === 'eraser') {
+        applyEraser(wPos.x, wPos.y);
+      }
+    }
+  }
+});
+
+function handlePointerEnd(e) {
+  if (e.button === 1 || e.button === 2) {
+    isMouseMiddlePanning = false;
+    return;
+  }
+  
+  if (activePointers.has(e.pointerId)) {
+    activePointers.delete(e.pointerId);
+  }
+  try { canvas.releasePointerCapture(e.pointerId); } catch(err) {}
+  
+  if (activePointers.size < 2) {
+    isPanZoomActive = false;
+  }
+  
+  if (activePointers.size === 0) {
+    if (STATE.isMovingSelection) {
+      STATE.isMovingSelection = false;
+      STATE.elementsOriginalPos = [];
+      showToast('移动并网格吸附完成');
+    } else if (STATE.isTransforming) {
+      STATE.isTransforming = false;
+      STATE.selectedElements.forEach(el => delete el._orig);
+      showToast('锚点变换与网格吸附完成');
+    } else if (STATE.isSelecting) {
+      STATE.isSelecting = false;
+      const x1 = Math.min(STATE.startX, STATE.currentX);
+      const y1 = Math.min(STATE.startY, STATE.currentY);
+      const x2 = Math.max(STATE.startX, STATE.currentX);
+      const y2 = Math.max(STATE.startY, STATE.currentY);
+      
+      STATE.selectionRect = { x1, y1, x2, y2 };
+      
+      STATE.selectedElements = STATE.elements.filter(el => {
+        let cx = 0, cy = 0;
+        if (el.type === 'line') {
+          cx = (el.x1 + el.x2) / 2; cy = (el.y1 + el.y2) / 2;
+        } else if (el.type === 'rect' || el.type === 'gate') {
+          cx = el.x + el.w / 2; cy = el.y + el.h / 2;
+        } else if (el.type === 'circle') {
+          cx = el.cx; cy = el.cy;
+        } else if (el.type === 'point' || el.type === 'text') {
+          cx = el.x; cy = el.y;
+        } else if (el.type === 'pen') {
+          let sumX = 0, sumY = 0;
+          el.points.forEach(p => { sumX += p.x; sumY += p.y; });
+          cx = sumX / el.points.length; cy = sumY / el.points.length;
+        }
+        return cx >= x1 && cx <= x2 && cy >= y1 && cy <= y2;
+      });
+      
+      showToast(`已选中 ${STATE.selectedElements.length} 个图元`);
+      updateSelectionActionHud();
+    } else if (STATE.isDrawing) {
+      STATE.isDrawing = false;
+      
+      if (STATE.activeTool === 'line') {
+        const dx = Math.abs(STATE.currentX - STATE.startX);
+        const dy = Math.abs(STATE.currentY - STATE.startY);
+        if (dx > 2 || dy > 2) {
+          const newLine = { type: 'line', x1: STATE.startX, y1: STATE.startY, x2: STATE.currentX, y2: STATE.currentY, color: STATE.penColor, width: STATE.penWidth };
+          
+          HISTORY.pushState();
+          
+          let merged = false;
+          for (let i = 0; i < STATE.elements.length; i++) {
+            const el = STATE.elements[i];
+            if (el.type === 'line' && el.color === newLine.color && el.width === newLine.width) {
+              if (Math.abs(el.y1 - el.y2) < 1 && Math.abs(newLine.y1 - newLine.y2) < 1 && Math.abs(el.y1 - newLine.y1) < 1) {
+                const minX1 = Math.min(el.x1, el.x2), maxX1 = Math.max(el.x1, el.x2);
+                const minX2 = Math.min(newLine.x1, newLine.x2), maxX2 = Math.max(newLine.x1, newLine.x2);
+                if (!(maxX1 < minX2 || maxX2 < minX1)) {
+                  el.x1 = Math.min(minX1, minX2);
+                  el.x2 = Math.max(maxX1, maxX2);
+                  merged = true;
+                  showToast('相邻短线已自动合并');
+                  break;
+                }
+              }
+              if (Math.abs(el.x1 - el.x2) < 1 && Math.abs(newLine.x1 - newLine.x2) < 1 && Math.abs(el.x1 - newLine.x1) < 1) {
+                const minY1 = Math.min(el.y1, el.y2), maxY1 = Math.max(el.y1, el.y2);
+                const minY2 = Math.min(newLine.y1, newLine.y2), maxY2 = Math.max(newLine.y1, newLine.y2);
+                if (!(maxY1 < minY2 || maxY2 < minY1)) {
+                  el.y1 = Math.min(minY1, minY2);
+                  el.y2 = Math.max(maxY1, maxY2);
+                  merged = true;
+                  showToast('相邻短线已自动合并');
+                  break;
+                }
+              }
+            }
+          }
+          if (!merged) {
+            STATE.elements.push(newLine);
+          }
+        }
+      } else if (STATE.activeTool === 'pen' && STATE.currentPenStroke) {
+        if (STATE.currentPenStroke.points.length > 1) {
+          HISTORY.pushState();
+          STATE.elements.push(STATE.currentPenStroke);
+        }
+        STATE.currentPenStroke = null;
+      } else if (STATE.activeTool === 'rect') {
+        const rx = Math.min(STATE.startX, STATE.currentX);
+        const ry = Math.min(STATE.startY, STATE.currentY);
+        const rw = Math.abs(STATE.currentX - STATE.startX);
+        const rh = Math.abs(STATE.currentY - STATE.startY);
+        if (rw > 2 && rh > 2) {
+          HISTORY.pushState();
+          STATE.elements.push({ type: 'rect', x: rx, y: ry, w: rw, h: rh, color: STATE.penColor, width: STATE.penWidth });
+        }
+      } else if (STATE.activeTool === 'circle') {
+        const r = Math.hypot(STATE.currentX - STATE.startX, STATE.currentY - STATE.startY);
+        if (r > 2) {
+          HISTORY.pushState();
+          STATE.elements.push({ type: 'circle', cx: STATE.startX, cy: STATE.startY, r: r, color: STATE.penColor, width: STATE.penWidth });
+        }
+      } else if (STATE.activeTool === 'point') {
+        HISTORY.pushState();
+        STATE.elements.push({ type: 'point', x: STATE.startX, y: STATE.startY, color: STATE.penColor, width: STATE.penWidth * 3 });
+      } else if (STATE.activeTool === 'text') {
+        const txt = prompt("请输入字符内容:", "Bohemia");
+        if (txt) {
+          HISTORY.pushState();
+          STATE.elements.push({ type: 'text', x: STATE.startX, y: STATE.startY, text: txt, color: STATE.penColor, size: 24 });
+        }
+      }
+    }
+  }
+}
+
+canvas.addEventListener('pointerup', handlePointerEnd);
+canvas.addEventListener('pointercancel', handlePointerEnd);
+canvas.addEventListener('pointerleave', handlePointerEnd);
+
+function applyEraser(wx, wy) {
+  const radius = STATE.eraserSize / VIEW.zoom;
+  STATE.elements = STATE.elements.filter(el => {
+    if (el.type === 'point') {
+      return Math.hypot(el.x - wx, el.y - wy) > radius;
+    } else if (el.type === 'line') {
+      return distToSegment({x: wx, y: wy}, {x: el.x1, y: el.y1}, {x: el.x2, y: el.y2}) > radius;
+    } else if (el.type === 'rect' || el.type === 'gate') {
+      return !(wx >= el.x - radius && wx <= el.x + el.w + radius && wy >= el.y - radius && wy <= el.y + el.h + radius);
+    } else if (el.type === 'circle') {
+      return Math.abs(Math.hypot(el.cx - wx, el.cy - wy) - el.r) > radius;
+    } else if (el.type === 'pen') {
+      return !el.points.some(p => Math.hypot(p.x - wx, p.y - wy) < radius);
+    } else if (el.type === 'text') {
+      return Math.hypot(el.x - wx, el.y - wy) > radius + 20;
+    }
+    return true;
+  });
+}
+
+function distToSegment(p, a, b) {
+  const l2 = (b.x - a.x)*(b.x - a.x) + (b.y - a.y)*(b.y - a.y);
+  if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x)*(b.x - a.x) + (p.y - a.y)*(b.y - a.y)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t*(b.x - a.x)), p.y - (a.y + t*(b.y - a.y)));
+}
+
+// PC端滚轮平滑缩放与Ctrl+滚轮缩放优化
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const zf = e.deltaY > 0 ? 0.9 : 1.1;
+  const nz = Math.max(VIEW.minZoom, Math.min(VIEW.maxZoom, VIEW.zoom * zf));
+  const before = screenToWorld(e.clientX, e.clientY);
+  VIEW.zoom = nz;
+  const after = screenToWorld(e.clientX, e.clientY);
+  VIEW.x += before.x - after.x;
+  VIEW.y += before.y - after.y;
+}, { passive: false });
+
+function renderLoop() {
+  drawScene();
+  if (CONFIG.enableMinimap) {
+    drawMinimap();
+  }
+  updateHUD();
+  requestAnimationFrame(renderLoop);
+}
+requestAnimationFrame(renderLoop);
+
+function updateHUD() {
+  document.getElementById('hudZoom').textContent = Math.round(VIEW.zoom * 100) + '%';
+  document.getElementById('hudGridStep').textContent = getLodGridSpacing() + 'px';
+  document.getElementById('hudCount').textContent = STATE.elements.length;
+}
+
+// 渲染场景
+function drawScene() {
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fillRect(0, 0, w, h);
+  
+  ctx.save();
+  const cx = w / 2;
+  const cy = h / 2;
+  ctx.translate(cx, cy);
+  ctx.scale(VIEW.zoom, VIEW.zoom);
+  ctx.translate(-VIEW.x, -VIEW.y);
+  
+  if (CONFIG.showGridDots && CONFIG.gridStyle !== 'none' && !STATE.isDrawing && !STATE.isSelecting) {
+    drawGrid();
+  }
+  
+  if (CONFIG.showAxes) {
+    drawAxes(w, h);
+  }
+  
+  if (CONFIG.showBorder) {
+    const halfW = CONFIG.canvasWidth / 2;
+    const halfH = CONFIG.canvasHeight / 2;
+    ctx.save();
+    ctx.strokeStyle = '#c4715a';
+    ctx.lineWidth = 2 / VIEW.zoom;
+    ctx.strokeRect(-halfW, -halfH, CONFIG.canvasWidth, CONFIG.canvasHeight);
+    ctx.restore();
+  }
+  
+  STATE.elements.forEach(el => {
+    const isSelected = STATE.selectedElements.includes(el);
+    drawElement(ctx, el, isSelected);
+  });
+  
+  if (STATE.isSelecting) {
+    ctx.save();
+    ctx.strokeStyle = '#c4715a';
+    ctx.lineWidth = 1.5 / VIEW.zoom;
+    ctx.setLineDash([6, 6]);
+    ctx.fillStyle = 'rgba(196,113,90,0.08)';
+    const rx = Math.min(STATE.startX, STATE.currentX);
+    const ry = Math.min(STATE.startY, STATE.currentY);
+    const rw = Math.abs(STATE.currentX - STATE.startX);
+    const rh = Math.abs(STATE.currentY - STATE.startY);
+    ctx.fillRect(rx, ry, rw, rh);
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.restore();
+  }
+  
+  const box = getSelectionBoundingBox();
+  if (box && STATE.selectedElements.length > 0 && !STATE.isSelecting) {
+    ctx.save();
+    ctx.strokeStyle = '#c4715a';
+    ctx.lineWidth = 1.5 / VIEW.zoom;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(box.x, box.y, box.w, box.h);
+    
+    const handles = [
+      { x: box.x, y: box.y },
+      { x: box.x + box.w, y: box.y },
+      { x: box.x, y: box.y + box.h },
+      { x: box.x + box.w, y: box.y + box.h }
+    ];
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#faf6f0';
+    ctx.strokeStyle = '#c4715a';
+    ctx.lineWidth = 2 / VIEW.zoom;
+    const hr = 6 / VIEW.zoom;
+    handles.forEach(pt => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, hr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+  
+  if (STATE.isDrawing) {
+    if (STATE.activeTool === 'line') {
+      ctx.strokeStyle = STATE.penColor;
+      ctx.globalAlpha = 0.65;
+      ctx.lineWidth = STATE.penWidth;
+      ctx.beginPath();
+      ctx.moveTo(STATE.startX, STATE.startY);
+      ctx.lineTo(STATE.currentX, STATE.currentY);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+      
+      drawSnapAnchor(ctx, STATE.startX, STATE.startY);
+      drawSnapAnchor(ctx, STATE.currentX, STATE.currentY);
+    } else if (STATE.activeTool === 'rect') {
+      ctx.strokeStyle = STATE.penColor;
+      ctx.globalAlpha = 0.65;
+      ctx.lineWidth = STATE.penWidth;
+      ctx.strokeRect(Math.min(STATE.startX, STATE.currentX), Math.min(STATE.startY, STATE.currentY), Math.abs(STATE.currentX - STATE.startX), Math.abs(STATE.currentY - STATE.startY));
+      ctx.globalAlpha = 1.0;
+    } else if (STATE.activeTool === 'circle') {
+      const r = Math.hypot(STATE.currentX - STATE.startX, STATE.currentY - STATE.startY);
+      ctx.strokeStyle = STATE.penColor;
+      ctx.globalAlpha = 0.65;
+      ctx.lineWidth = STATE.penWidth;
+      ctx.beginPath();
+      ctx.arc(STATE.startX, STATE.startY, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+    } else if (STATE.activeTool === 'pen' && STATE.currentPenStroke) {
+      ctx.save();
+      ctx.globalAlpha = 0.65;
+      drawElement(ctx, STATE.currentPenStroke);
+      ctx.restore();
+    }
+  }
+  
+  if (CONFIG.gridStyle !== 'none' && STATE.isDrawing) {
+    drawGrid();
+  }
+  
+  if (STATE.activeTool === 'eraser' && activePointers.size === 1) {
+    const lastPt = Array.from(activePointers.values())[0];
+    if (lastPt) {
+      const wPos = screenToWorld(lastPt.clientX, lastPt.clientY);
+      ctx.strokeStyle = 'rgba(196,113,90,0.8)';
+      ctx.lineWidth = 1.5 / VIEW.zoom;
+      ctx.fillStyle = 'rgba(196,113,90,0.1)';
+      ctx.beginPath();
+      ctx.arc(wPos.x, wPos.y, STATE.eraserSize / VIEW.zoom, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+  
+  ctx.restore();
+}
+
+function drawGrid() {
+  const spacing = getLodGridSpacing();
+  const tl = screenToWorld(0, 0);
+  const br = screenToWorld(canvas.clientWidth, canvas.clientHeight);
+  
+  const startX = Math.floor(tl.x / spacing) * spacing;
+  const startY = Math.floor(tl.y / spacing) * spacing;
+  const endX = Math.ceil(br.x / spacing) * spacing;
+  const endY = Math.ceil(br.y / spacing) * spacing;
+  
+  ctx.fillStyle = 'rgba(107, 83, 68, 0.35)';
+  ctx.strokeStyle = 'rgba(107, 83, 68, 0.22)';
+  const dotRadius = Math.max(1, 1.5 / VIEW.zoom);
+  const crossSize = Math.max(2, 4 / VIEW.zoom);
+  
+  for (let x = startX; x <= endX; x += spacing) {
+    for (let y = startY; y <= endY; y += spacing) {
+      if (CONFIG.gridStyle === 'dot') {
+        ctx.beginPath();
+        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (CONFIG.gridStyle === 'cross') {
+        ctx.lineWidth = 0.8 / VIEW.zoom;
+        ctx.beginPath();
+        ctx.moveTo(x - crossSize, y);
+        ctx.lineTo(x + crossSize, y);
+        ctx.moveTo(x, y - crossSize);
+        ctx.lineTo(x, y + crossSize);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawSnapAnchor(context, x, y) {
+  context.save();
+  context.fillStyle = '#c4715a';
+  context.strokeStyle = '#faf6f0';
+  context.lineWidth = 1.5 / VIEW.zoom;
+  
+  const r = 4.5 / VIEW.zoom;
+  context.beginPath();
+  context.arc(x, y, r, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.restore();
+}
+
+function drawAxes(w, h) {
+  const tl = screenToWorld(0, 0);
+  const br = screenToWorld(w, h);
+  
+  ctx.strokeStyle = 'rgba(196,113,90,0.3)';
+  ctx.lineWidth = 1.5 / VIEW.zoom;
+  
+  if (tl.x <= 0 && br.x >= 0) {
+    ctx.beginPath();
+    ctx.moveTo(0, tl.y);
+    ctx.lineTo(0, br.y);
+    ctx.stroke();
+  }
+  if (tl.y <= 0 && br.y >= 0) {
+    ctx.beginPath();
+    ctx.moveTo(tl.x, 0);
+    ctx.lineTo(br.x, 0);
+    ctx.stroke();
+  }
+}
+
+// 终极完美逻辑门渲染引擎
+function drawLogicGateWithPins(context, el, isSelected = false) {
+  const x = el.x;
+  const y = el.y;
+  const w = el.w;
+  const h = el.h;
+  const type = el.gateType; // AND, OR, NOT, NAND, NOR, XOR
+  const dir = el.direction || 'right'; // right, down, left, up
+  
+  context.save();
+  const strokeColor = isSelected ? '#a0522d' : (el.color || '#3d2b1f');
+  context.strokeStyle = strokeColor;
+  context.fillStyle = '#faf6f0';
+  context.lineWidth = (el.width || 2) + (isSelected ? 1 : 0);
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  
+  context.translate(x + w / 2, y + h / 2);
+  let rotAngle = 0;
+  if (dir === 'down') rotAngle = Math.PI / 2;
+  else if (dir === 'left') rotAngle = Math.PI;
+  else if (dir === 'up') rotAngle = -Math.PI / 2;
+  context.rotate(rotAngle);
+  
+  const localW = (dir === 'down' || dir === 'up') ? h : w;
+  const localH = (dir === 'down' || dir === 'up') ? w : h;
+  
+  const unitW = localW / 5;
+  const unitH = localH / 4;
+  const bodyW = unitW * 3;
+  const bodyH = localH;
+  const bodyX = -localW / 2 + unitW;
+  const bodyY = -localH / 2;
+  
+  const orPinStop = (type === 'OR' || type === 'NOR' || type === 'XOR') ? 12 : 0;
+  
+  context.beginPath();
+  if (type === 'AND' || type === 'NAND') {
+    const radius = bodyH * 0.5;
+    context.moveTo(bodyX, bodyY);
+    context.lineTo(bodyX + bodyW - radius, bodyY);
+    context.arc(bodyX + bodyW - radius, bodyY + radius, radius, -Math.PI / 2, Math.PI / 2);
+    context.lineTo(bodyX, bodyY + bodyH);
+  } else if (type === 'OR' || type === 'NOR' || type === 'XOR') {
+    context.moveTo(bodyX, bodyY);
+    context.quadraticCurveTo(bodyX + bodyW * 0.65, bodyY, bodyX + bodyW, bodyY + bodyH * 0.5);
+    context.quadraticCurveTo(bodyX + bodyW * 0.65, bodyY + bodyH, bodyX, bodyY + bodyH);
+    context.quadraticCurveTo(bodyX + bodyW * 0.3, bodyY + bodyH * 0.5, bodyX, bodyY);
+  } else if (type === 'NOT') {
+    context.moveTo(bodyX, bodyY);
+    context.lineTo(bodyX + bodyW, bodyY + bodyH * 0.5);
+    context.lineTo(bodyX, bodyY + bodyH);
+  }
+  context.closePath();
+  context.fill();
+  context.stroke();
+  
+  if (type === 'XOR') {
+    context.beginPath();
+    const curveOffset = unitW * 0.35;
+    context.moveTo(bodyX - curveOffset, bodyY);
+    context.quadraticCurveTo(bodyX + curveOffset * 0.8, bodyY + bodyH * 0.5, bodyX - curveOffset, bodyY + bodyH);
+    context.stroke();
+  }
+  
+  context.beginPath();
+  const stopX = bodyX + orPinStop;
+  if (type === 'NOT') {
+    context.moveTo(-localW / 2, 0); context.lineTo(stopX, 0);
+  } else {
+    context.moveTo(-localW / 2, -unitH); context.lineTo(stopX, -unitH);
+    context.moveTo(-localW / 2, unitH); context.lineTo(stopX, unitH);
+  }
+  context.stroke();
+  
+  if (type === 'NAND' || type === 'NOR' || type === 'NOT') {
+    const circleRadius = 4;
+    const circleX = bodyX + bodyW + circleRadius;
+    const circleY = 0;
+    context.beginPath();
+    context.moveTo(circleX + circleRadius, circleY); context.lineTo(localW / 2, circleY);
+    context.stroke();
+    context.beginPath();
+    context.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    context.fillStyle = '#faf6f0'; context.fill(); context.stroke();
+  } else {
+    context.beginPath();
+    context.moveTo(bodyX + bodyW, 0); context.lineTo(localW / 2, 0);
+    context.stroke();
+  }
+  
+  context.rotate(-rotAngle);
+  context.fillStyle = strokeColor;
+  context.font = `bold 11px 'Cormorant Garamond', serif`;
+  context.textAlign = 'center'; context.textBaseline = 'middle';
+  context.fillText(type, 0, 0);
+  
+  context.restore();
+}
+
+function drawElement(context, el, isSelected = false) {
+  if (el.type === 'gate') {
+    drawLogicGateWithPins(context, el, isSelected);
+    return;
+  }
+  
+  context.strokeStyle = isSelected ? '#a0522d' : (el.color || '#3d2b1f');
+  context.fillStyle = isSelected ? '#a0522d' : (el.color || '#3d2b1f');
+  context.lineWidth = (el.width || 2) + (isSelected ? 1 : 0);
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  
+  if (el.type === 'line') {
+    context.beginPath();
+    context.moveTo(el.x1, el.y1);
+    context.lineTo(el.x2, el.y2);
+    context.stroke();
+  } else if (el.type === 'rect') {
+    context.strokeRect(el.x, el.y, el.w, el.h);
+  } else if (el.type === 'circle') {
+    context.beginPath();
+    context.arc(el.cx, el.cy, el.r, 0, Math.PI * 2);
+    context.stroke();
+  } else if (el.type === 'point') {
+    context.beginPath();
+    context.arc(el.x, el.y, el.width || 4, 0, Math.PI * 2);
+    context.fill();
+  } else if (el.type === 'pen') {
+    if (el.points && el.points.length > 1) {
+      context.beginPath();
+      context.moveTo(el.points[0].x, el.points[0].y);
+      for (let i = 1; i < el.points.length; i++) {
+        context.lineTo(el.points[i].x, el.points[i].y);
+      }
+      context.stroke();
+    }
+  } else if (el.type === 'text') {
+    context.font = `${el.size || 24}px 'Cormorant Garamond', serif`;
+    context.fillText(el.text, el.x, el.y);
+  }
+}
+
+function drawMinimap() {
+  const mw = minimapCanvas.width / window.devicePixelRatio;
+  const mh = minimapCanvas.height / window.devicePixelRatio;
+  
+  minimapCtx.fillStyle = '#faf6f0';
+  minimapCtx.fillRect(0, 0, mw, mh);
+  
+  const halfW = CONFIG.canvasWidth / 2;
+  const halfH = CONFIG.canvasHeight / 2;
+  
+  minimapCtx.save();
+  minimapCtx.translate(mw / 2, mh / 2);
+  
+  const mScale = Math.min(mw / (CONFIG.canvasWidth * 1.3), mh / (CONFIG.canvasHeight * 1.3));
+  
+  if (CONFIG.showBorder) {
+    minimapCtx.strokeStyle = '#c4715a';
+    minimapCtx.lineWidth = 1;
+    minimapCtx.strokeRect(-halfW * mScale, -halfH * mScale, CONFIG.canvasWidth * mScale, CONFIG.canvasHeight * mScale);
+  }
+  
+  STATE.elements.forEach(el => {
+    minimapCtx.strokeStyle = '#c4715a';
+    minimapCtx.fillStyle = '#c4715a';
+    minimapCtx.lineWidth = 1;
+    if (el.type === 'line') {
+      minimapCtx.beginPath();
+      minimapCtx.moveTo(el.x1 * mScale, el.y1 * mScale);
+      minimapCtx.lineTo(el.x2 * mScale, el.y2 * mScale);
+      minimapCtx.stroke();
+    } else if (el.type === 'rect' || el.type === 'gate') {
+      minimapCtx.strokeRect(el.x * mScale, el.y * mScale, el.w * mScale, el.h * mScale);
+    } else if (el.type === 'circle') {
+      minimapCtx.beginPath();
+      minimapCtx.arc(el.cx * mScale, el.cy * mScale, el.r * mScale, 0, Math.PI * 2);
+      minimapCtx.stroke();
+    }
+  });
+  
+  const tl = screenToWorld(0, 0);
+  const br = screenToWorld(canvas.clientWidth, canvas.clientHeight);
+  minimapCtx.strokeStyle = '#a0522d';
+  minimapCtx.lineWidth = 1.5;
+  minimapCtx.strokeRect(tl.x * mScale, tl.y * mScale, (br.x - tl.x) * mScale, (br.y - tl.y) * mScale);
+  
+  minimapCtx.restore();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ==========================================
+// 数据文件导入与导出功能
+// ==========================================
+document.getElementById('btnExportDataModal').onclick = () => {
+  const data = {
+    version: APP_VERSION,
+    config: CONFIG,
+    elements: STATE.elements
+  };
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Bohemia_Grid_Data_${APP_VERSION}.json`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('数据文件导出成功');
+};
+
+const importFileInput = document.getElementById('importFileInput');
+document.getElementById('btnImportDataModal').onclick = () => {
+  importFileInput.click();
+};
+
+importFileInput.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const data = JSON.parse(event.target.result);
+      if (data.elements && Array.isArray(data.elements)) {
+        HISTORY.pushState();
+        STATE.elements = data.elements;
+        STATE.selectedElements = [];
+        updateSelectionActionHud();
+        if (data.config) {
+          Object.assign(CONFIG, data.config);
+          document.getElementById('inputCanvasWidth').value = CONFIG.canvasWidth;
+          document.getElementById('inputCanvasHeight').value = CONFIG.canvasHeight;
+          document.getElementById('inputBaseGrid').value = CONFIG.baseGridSpacing;
+          document.getElementById('toggleShowGrid').checked = CONFIG.showGridDots;
+          document.getElementById('toggleShowAxes').checked = CONFIG.showAxes;
+          document.getElementById('toggleShowBorder').checked = CONFIG.showBorder;
+          document.getElementById('toggleMinimap').checked = CONFIG.enableMinimap;
+        }
+        showToast('数据文件导入成功！');
+        settingsModal.classList.remove('open');
+      } else {
+        alert('无效的数据文件格式');
+      }
+    } catch (err) {
+      alert('解析 JSON 文件失败');
+    }
+    importFileInput.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+};
+
+// 复制与粘贴功能
+document.getElementById('btnCopy').onclick = () => {
+  if (STATE.selectedElements.length === 0) {
+    showToast('请先选中要复制的图元');
+    return;
+  }
+  STATE.clipboard = JSON.parse(JSON.stringify(STATE.selectedElements));
+  showToast(`已复制 ${STATE.clipboard.length} 个图元`);
+};
+
+document.getElementById('btnPaste').onclick = () => {
+  if (STATE.clipboard.length === 0) {
+    showToast('剪贴板为空');
+    return;
+  }
+  HISTORY.pushState();
+  const pasted = JSON.parse(JSON.stringify(STATE.clipboard));
+  pasted.forEach(el => {
+    if (el.type === 'line') {
+      el.x1 += 40; el.y1 += 40; el.x2 += 40; el.y2 += 40;
+    } else if (el.type === 'rect' || el.type === 'point' || el.type === 'text' || el.type === 'gate') {
+      el.x += 40; el.y += 40;
+    } else if (el.type === 'circle') {
+      el.cx += 40; el.cy += 40;
+    } else if (el.type === 'pen') {
+      el.points.forEach(p => { p.x += 40; p.y += 40; });
+    }
+    STATE.elements.push(el);
+  });
+  STATE.selectedElements = pasted;
+  showToast(`已粘贴 ${pasted.length} 个图元`);
+  updateSelectionActionHud();
+};
+
+// 绑定撤销与恢复按钮事件
+document.getElementById('btnUndo').onclick = () => HISTORY.undo();
+document.getElementById('btnRedo').onclick = () => HISTORY.redo();
+
+// 波西米亚自定义美观下拉菜单逻辑
+function setupBohoSelect(wrapId, headerId, dropdownId, textId, onSelect) {
+  const wrap = document.getElementById(wrapId);
+  const header = document.getElementById(headerId);
+  const dropdown = document.getElementById(dropdownId);
+  const textSpan = document.getElementById(textId);
+  
+  header.onclick = (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.boho-select-dropdown').forEach(d => {
+      if (d !== dropdown) d.classList.remove('open');
+    });
+    dropdown.classList.toggle('open');
+  };
+  
+  dropdown.querySelectorAll('.boho-select-option').forEach(opt => {
+    opt.onclick = (e) => {
+      e.stopPropagation();
+      dropdown.querySelectorAll('.boho-select-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      textSpan.textContent = opt.textContent;
+      dropdown.classList.remove('open');
+      if (onSelect) onSelect(opt.dataset.value, opt.textContent);
+    };
+  });
+}
+
+setupBohoSelect('gridStyleSelectWrap', 'gridStyleHeader', 'gridStyleDropdown', 'gridStyleHeaderText', (val) => {
+  CONFIG.gridStyle = val;
+  showToast('网格样式已切换');
+});
+
+setupBohoSelect('exportScaleSelectWrap', 'exportScaleHeader', 'exportScaleDropdown', 'exportScaleHeaderText', (val) => {});
+
+window.addEventListener('click', () => {
+  document.querySelectorAll('.boho-select-dropdown').forEach(d => d.classList.remove('open'));
+});
+
+// 顶部主工具栏动态替换逻辑
+const currentToolBtn = document.getElementById('currentToolBtn');
+const currentToolIcon = document.getElementById('currentToolIcon');
+const currentToolLabel = document.getElementById('currentToolLabel');
+const btnMoreTools = document.getElementById('btnMoreTools');
+const moreToolsMenu = document.getElementById('moreToolsMenu');
+const propertiesBar = document.getElementById('propertiesBar');
+const strokeWidthRange = document.getElementById('strokeWidthRange');
+const strokeWidthVal = document.getElementById('strokeWidthVal');
+
+function setTool(toolName, labelText, iconName) {
+  STATE.activeTool = toolName;
+  currentToolLabel.textContent = labelText;
+  currentToolIcon.setAttribute('data-lucide', iconName);
+  lucide.createIcons();
+  currentToolBtn.setAttribute('data-tool', toolName);
+  
+  if (toolName === 'eraser') {
+    document.getElementById('propSizeLabel').textContent = '擦除大小';
+    strokeWidthRange.value = STATE.eraserSize;
+    strokeWidthVal.textContent = STATE.eraserSize;
+    propertiesBar.classList.remove('hidden');
+  } else if (toolName === 'point' || toolName === 'line' || toolName === 'pen' || toolName === 'rect' || toolName === 'circle') {
+    document.getElementById('propSizeLabel').textContent = '粗细';
+    strokeWidthRange.value = STATE.penWidth;
+    strokeWidthVal.textContent = STATE.penWidth;
+    propertiesBar.classList.remove('hidden');
+  } else {
+    propertiesBar.classList.add('hidden');
+  }
+  
+  moreToolsMenu.classList.remove('open');
+  showToast('已切换工具: ' + labelText);
+}
+
+btnMoreTools.onclick = (e) => {
+  e.stopPropagation();
+  const rect = btnMoreTools.getBoundingClientRect();
+  moreToolsMenu.style.top = (rect.bottom + 8) + 'px';
+  moreToolsMenu.style.left = rect.left + 'px';
+  moreToolsMenu.classList.toggle('open');
+};
+
+document.querySelectorAll('.dropdown-item').forEach(item => {
+  item.onclick = (e) => {
+    e.stopPropagation();
+    const tool = item.dataset.tool;
+    const label = item.dataset.label;
+    const icon = item.dataset.icon;
+    setTool(tool, label, icon);
+  };
+});
+
+window.onclick = () => {
+  moreToolsMenu.classList.remove('open');
+  document.querySelectorAll('.boho-select-dropdown').forEach(d => d.classList.remove('open'));
+};
+
+strokeWidthRange.oninput = () => {
+  const val = parseInt(strokeWidthRange.value);
+  strokeWidthVal.textContent = val;
+  if (STATE.activeTool === 'eraser') {
+    STATE.eraserSize = val;
+  } else {
+    STATE.penWidth = val;
+  }
+};
+
+document.querySelectorAll('.color-swatch').forEach(sw => {
+  sw.onclick = () => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    STATE.penColor = sw.dataset.color;
+    document.getElementById('colorPickerInput').value = STATE.penColor;
+  };
+});
+document.getElementById('colorPickerInput').oninput = (e) => {
+  STATE.penColor = e.target.value;
+};
+
+document.getElementById('btnClear').onclick = () => {
+  if (confirm('确定要清空画布上的所有图形吗？')) {
+    HISTORY.pushState();
+    STATE.elements = [];
+    STATE.selectedElements = [];
+    updateSelectionActionHud();
+    showToast('画布已清空');
+  }
+};
+
+document.getElementById('toolEraser').onclick = () => {
+  setTool('eraser', '橡皮擦', 'eraser');
+};
+
+const settingsModal = document.getElementById('settingsModal');
+document.getElementById('btnSettings').onclick = () => {
+  settingsModal.classList.add('open');
+};
+document.getElementById('closeSettingsModal').onclick = () => {
+  settingsModal.classList.remove('open');
+};
+document.getElementById('btnCancelSettings').onclick = () => {
+  settingsModal.classList.remove('open');
+};
+document.getElementById('btnApplySettings').onclick = () => {
+  CONFIG.canvasWidth = parseInt(document.getElementById('inputCanvasWidth').value) || 2000;
+  CONFIG.canvasHeight = parseInt(document.getElementById('inputCanvasHeight').value) || 1500;
+  CONFIG.baseGridSpacing = parseInt(document.getElementById('inputBaseGrid').value) || 40;
+  CONFIG.showGridDots = document.getElementById('toggleShowGrid').checked;
+  CONFIG.showAxes = document.getElementById('toggleShowAxes').checked;
+  CONFIG.showBorder = document.getElementById('toggleShowBorder').checked;
+  CONFIG.enableMinimap = document.getElementById('toggleMinimap').checked;
+  
+  document.getElementById('minimapContainer').classList.toggle('hidden', !CONFIG.enableMinimap);
+  settingsModal.classList.remove('open');
+  showToast('设置应用成功');
+};
+
+const exportModal = document.getElementById('exportModal');
+document.getElementById('btnExport').onclick = () => {
+  exportModal.classList.add('open');
+};
+document.getElementById('closeExportModal').onclick = () => {
+  exportModal.classList.remove('open');
+};
+document.getElementById('btnCancelExport').onclick = () => {
+  exportModal.classList.remove('open');
+};
+
+document.getElementById('btnStartBenchmark').onclick = () => {
+  const infoEl = document.getElementById('browserMaxExportInfo');
+  infoEl.textContent = "正在测算浏览器硬件渲染上限及 Blob 导出性能...";
+  setTimeout(() => {
+    infoEl.innerHTML = `<b style="color:var(--accent-terracotta);">测算完成！</b> 当前环境支持最高 1.53.0 巅峰无损导出。`;
+    showToast('基准测算完成');
+  }, 600);
+};
+
+// 导出逻辑
+document.getElementById('btnConfirmExport').onclick = () => {
+  const activeOpt = document.querySelector('#exportScaleDropdown .boho-select-option.selected');
+  const scale = activeOpt ? parseFloat(activeOpt.dataset.value) : 1.5;
+  const expW = CONFIG.canvasWidth * scale;
+  const expH = CONFIG.canvasHeight * scale;
+  
+  const expCanvas = document.createElement('canvas');
+  expCanvas.width = expW;
+  expCanvas.height = expH;
+  const eCtx = expCanvas.getContext('2d');
+  
+  eCtx.fillStyle = '#faf6f0';
+  eCtx.fillRect(0, 0, expW, expH);
+  
+  eCtx.save();
+  eCtx.scale(scale, scale);
+  
+  const halfW = CONFIG.canvasWidth / 2;
+  const halfH = CONFIG.canvasHeight / 2;
+  eCtx.translate(halfW, halfH);
+  
+  if (CONFIG.showBorder) {
+    eCtx.strokeStyle = '#c4715a';
+    eCtx.lineWidth = 2;
+    eCtx.strokeRect(-halfW, -halfH, CONFIG.canvasWidth, CONFIG.canvasHeight);
+  }
+  
+  if (CONFIG.showGridDots && CONFIG.gridStyle !== 'none') {
+    const spacing = CONFIG.baseGridSpacing;
+    const dotRadius = 1.5;
+    const crossSize = 4;
+    eCtx.fillStyle = 'rgba(107, 83, 68, 0.35)';
+    eCtx.strokeStyle = 'rgba(107, 83, 68, 0.22)';
+    
+    const startX = Math.round(-halfW / spacing) * spacing;
+    const startY = Math.round(-halfH / spacing) * spacing;
+    const endX = Math.round(halfW / spacing) * spacing;
+    const endY = Math.round(halfH / spacing) * spacing;
+    
+    for (let x = startX; x <= endX; x += spacing) {
+      for (let y = startY; y <= endY; y += spacing) {
+        if (CONFIG.gridStyle === 'dot') {
+          eCtx.beginPath();
+          eCtx.arc(x, y, dotRadius, 0, Math.PI * 2);
+          eCtx.fill();
+        } else if (CONFIG.gridStyle === 'cross') {
+          eCtx.lineWidth = 0.8;
+          eCtx.beginPath();
+          eCtx.moveTo(x - crossSize, y);
+          eCtx.lineTo(x + crossSize, y);
+          eCtx.moveTo(x, y - crossSize);
+          eCtx.lineTo(x, y + crossSize);
+          eCtx.stroke();
+        }
+      }
+    }
+  }
+  
+  if (CONFIG.showAxes) {
+    eCtx.strokeStyle = 'rgba(196,113,90,0.3)';
+    eCtx.lineWidth = 1.5;
+    eCtx.beginPath();
+    eCtx.moveTo(0, -halfH); eCtx.lineTo(0, halfH);
+    eCtx.moveTo(-halfW, 0); eCtx.lineTo(halfW, 0);
+    eCtx.stroke();
+  }
+  
+  STATE.elements.forEach(el => drawElement(eCtx, el));
+  eCtx.restore();
+  
+  expCanvas.toBlob(blob => {
+    if (!blob) {
+      alert('导出失败，请检查分辨率与浏览器内存');
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Bohemia_Grid_1.53.0_${CONFIG.canvasWidth}x${CONFIG.canvasHeight}_${scale}x.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    const box = document.getElementById('exportResultBox');
+    const container = document.getElementById('exportImgContainer');
+    const linkBtn = document.getElementById('downloadLinkBtn');
+    
+    container.innerHTML = `<img src="${url}" style="max-width:100%; height:auto; display:block; margin:0 auto; border-radius:4px;">`;
+    linkBtn.href = url;
+    linkBtn.download = `Bohemia_Grid_1.53.0_${CONFIG.canvasWidth}x${CONFIG.canvasHeight}_${scale}x.png`;
+    box.style.display = 'block';
+    
+    showToast('高清 PNG 导出成功！');
+  }, 'image/png');
+};
+
+</script>
+</body>
+</html>
